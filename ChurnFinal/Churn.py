@@ -10,8 +10,8 @@ import csv
 ###########################################         AUXILIARES        ################################################
 
 # Função que define os tipos de cada coluna, elimina as colunas desnecessárias e acrescenta colunas. #
-def defineDataframe( cdf: pd.DataFrame ) -> None:
-    """_summary_
+def _defineDataframe( cdf: pd.DataFrame ) -> None:
+    """Manipula o dataframe de transações adicionando, retirando e definindo os tipos das colunas;
 
     Args:
         cdf (pd.DataFrame): dataframe do arquivo de transações;
@@ -23,8 +23,8 @@ def defineDataframe( cdf: pd.DataFrame ) -> None:
     cdf["char_date"] = cdf["date"].dt.strftime( "%Y-%m-%d" )
 
 # Função que calcula a quantidade de clientes no Dataframe. #
-def totalClientes( cdf: pd.DataFrame ) -> int:
-    """_summary_
+def _totalClientes( cdf: pd.DataFrame ) -> int:
+    """Calcula a quantidade de clientes diferentes em um dataframe de transações;
 
     Args:
         cdf (pd.DataFrame): dataframe do arquivo de transações;
@@ -36,8 +36,8 @@ def totalClientes( cdf: pd.DataFrame ) -> int:
     return len( cdf["id_cliente"].unique() )
 
 # Função que transforma a matriz para um DataFrame #
-def matrizParaDataframe( matIdChurn: np.ndarray, datesVector: pd.DatetimeIndex ) -> pd.DataFrame:
-    """_summary_
+def _matrizParaDataframe( matIdChurn: np.ndarray, datesVector: pd.DatetimeIndex ) -> pd.DataFrame:
+    """Transforma uma matriz para um dataframe;
 
     Args:
         matIdChurn (np.ndarray): matriz de clientes por períodos preenchida;
@@ -49,6 +49,7 @@ def matrizParaDataframe( matIdChurn: np.ndarray, datesVector: pd.DatetimeIndex )
     
     df_id_churn = pd.DataFrame( matIdChurn )
     df_id_churn.columns = datesVector[:-1].astype( str )
+
     return df_id_churn
 
 ######################################################################################################################
@@ -56,8 +57,8 @@ def matrizParaDataframe( matIdChurn: np.ndarray, datesVector: pd.DatetimeIndex )
 #####################################         MANIPULADORES DE ARQUIVO        ########################################
 
 # Função que lê um arquivo csv e salva como um Dataframe. #
-def lerArquivo( arquivo: str ) -> pd.DataFrame:
-    """_summary_
+def _lerArquivo( arquivo: str ) -> pd.DataFrame:
+    """Lê um arquivo de CSV e salva em uma variável de dataframe;
 
     Args:
         arquivo (str): nome do arquivo de transações;
@@ -68,12 +69,13 @@ def lerArquivo( arquivo: str ) -> pd.DataFrame:
     
     nomes_colunas = ["id_cliente", "char_date", "categoria", "valor"]
     cdf = pd.read_csv( arquivo, sep="\s+", names=nomes_colunas )
-    defineDataframe( cdf )
+    _defineDataframe( cdf )
+
     return cdf
 
 # Função que salva o Dataframe em um arquivo. #
-def salvaArquivo( churn: pd.DataFrame, nomeArquivo: str ) -> None:
-    """_summary_
+def _salvaArquivo( churn: pd.DataFrame, nomeArquivo: str ) -> None:
+    """Salva um dataframe em um arquivo CSV;
 
     Args:
         churn (pd.DataFrame): o dataframe de churn resultante;
@@ -87,41 +89,43 @@ def salvaArquivo( churn: pd.DataFrame, nomeArquivo: str ) -> None:
 #########################################         CONSTRUTORES        ################################################
 
 # Função que controi o vetor de datas de inicio de cada período. #
-def controiVetorDatas( cdf: pd.DataFrame, totalPeriodos: int ) -> pd.DatetimeIndex:
-    """_summary_
+def _controiVetorDatas( cdf: pd.DataFrame, totalPeriodos: int ) -> pd.DatetimeIndex:
+    """Constroi um vetor de datas de períodos com base em um intervalo de transações e quantidade de períodos desejados;
 
     Args:
         cdf (pd.DataFrame): dataframe do arquivo de transações;
         totalPeriodos (int): total de períodos de separação de dados desejada;
 
     Returns:
-        pd.DatetimeIndex: retorna um vetor de datas de períodos no intervalo das transações;
+        pd.DatetimeIndex: retorna um vetor de datas;
     """
     
     dates_vector = pd.date_range( start = min( cdf["date"] ), end = max( cdf["date"] ), periods = totalPeriodos )
     last_date = dates_vector[-1]
     last_date = last_date + pd.DateOffset( days = 1 )
     dates_vector = dates_vector[:-1].append( pd.DatetimeIndex( [last_date] ) )
+
     return dates_vector
 
 # Função que constroi a matriz de clientes por períodos preenchida com zeros. #
-def constroiMatrizClientePorPeriodo( cdf: pd.DataFrame, totalPeriodos: int ) -> np.ndarray:
-    """_summary_
+def _constroiMatrizClientePorPeriodo( cdf: pd.DataFrame, totalPeriodos: int ) -> np.ndarray:
+    """Constroi uma matriz de clientes por períodos;
 
     Args:
         cdf (pd.DataFrame): dataframe do arquivo de transações;
         totalPeriodos (int): total de períodos de separação de dados desejada;
 
     Returns:
-        np.ndarray: retorna uma matriz de clientes por períodos preenchida com zeros;
+        np.ndarray: retorna a matriz de clientes por períodos preenchida com zeros;
     """
     
-    mat_id_churn = np.zeros( ( totalClientes( cdf ), totalPeriodos-1 ) )
+    mat_id_churn = np.zeros( ( _totalClientes( cdf ), totalPeriodos-1 ) )
+
     return mat_id_churn
 
 # Função que constroi o Dataframe do churn. #
-def constroiChurn( media: pd.Series, cdf: pd.DataFrame ) -> pd.DataFrame:
-    """_summary_
+def _constroiChurn( media: pd.Series, cdf: pd.DataFrame ) -> pd.DataFrame:
+    """Constroi o dataframe do churn;
 
     Args:
         media (pd.Series): serie de valores de churn já calculados;
@@ -134,15 +138,16 @@ def constroiChurn( media: pd.Series, cdf: pd.DataFrame ) -> pd.DataFrame:
     churn = pd.DataFrame( media )
     churn['id'] = cdf['id_cliente'].unique().astype( str )
     churn = churn.rename( columns = {churn.columns[0]: 'churn'} )
+
     return churn[['id', 'churn']]
 
 ######################################################################################################################
 
 ###############################       CALCULADORES DO DENOMINADOR DA MÉDIA        ######################################
 
-# Função que retorna um vetor com o valor total que irá dividir no calculo da média baseado a recência do cliente. #
-def calculaRecenciaCliente( matIdChurn: np.ndarray, datesVector: pd.DatetimeIndex ) -> list:
-    """_summary_
+# Função que retorna um vetor com o valor total que irá do denominador no calculo da média baseado na recência do cliente. #
+def _calculaRecenciaCliente( matIdChurn: np.ndarray, datesVector: pd.DatetimeIndex ) -> list:
+    """Calcula o valor do denominador do modelo de média por recência de cada cliente;
 
     Args:
         matIdChurn (np.ndarray): matriz de clientes por períodos preenchida;
@@ -162,11 +167,12 @@ def calculaRecenciaCliente( matIdChurn: np.ndarray, datesVector: pd.DatetimeInde
             elif matIdChurn[j][i] == 1:
                 comeca_compra = 1
                 media_por_cliente[j] += 1
+    
     return media_por_cliente
 
-# Função que calcula o valor que divide na média ponderada linear. #
-def calculaLinear( totalPeriodos: int ) -> float:
-    """_summary_
+# Função que calcula o valor do denominador na média ponderada linear. #
+def _calculaLinear( totalPeriodos: int ) -> float:
+    """Calcula o valor do denominador do modelo de média linear;
 
     Args:
         totalPeriodos (int): total de períodos de separação de dados desejada;
@@ -179,9 +185,9 @@ def calculaLinear( totalPeriodos: int ) -> float:
     # Sn = n( a1 + an ) / 2
     return ( totalPeriodos - 1 ) * ( totalPeriodos ) / 2.0
 
-# Função que calcula o valor que divide na média ponderada exponencial de qualquer base. #
-def calculaExponencial( totalPeriodos: int, base: float ) -> float:
-    """_summary_
+# Função que calcula o valor do denominador na média ponderada exponencial de qualquer base. #
+def _calculaExponencial( totalPeriodos: int, base: float ) -> float:
+    """Calcula o valor do denominador do modelo de média exponencial;
 
     Args:
         totalPeriodos (int): total de períodos de separação de dados desejada;
@@ -195,9 +201,9 @@ def calculaExponencial( totalPeriodos: int, base: float ) -> float:
     # Sn = a1( q**n - 1 ) / (q-1)
     return ( base ) * ( base ** ( totalPeriodos-1 ) - 1 ) / ( base - 1 )
 
-# Função que calcula o valor que divide na média simples. #
-def calculaSimples( totalPeriodos: int ) -> int:
-    """_summary_
+# Função que calcula o valor do denominador na média simples. #
+def _calculaSimples( totalPeriodos: int ) -> int:
+    """Calcula o valor do denominador do modelo de média simples;
 
     Args:
         totalPeriodos (int): total de períodos de separação de dados desejada;
@@ -213,7 +219,7 @@ def calculaSimples( totalPeriodos: int ) -> int:
 ##################################         PREENCHEDORES DE MATRIZ        ############################################
 
 # Função que preenche a matriz com uma base escolhida nas datas de compras que correspondem a determinado período. #
-def preencheMatriz( matIdChurn: np.ndarray, datesVector: pd.DatetimeIndex, cdf: pd.DataFrame, base: float = 1 ) -> None:
+def _preencheMatriz( matIdChurn: np.ndarray, datesVector: pd.DatetimeIndex, cdf: pd.DataFrame, base: float = 1 ) -> None:
     """Preeche a matriz de clientes por períodos, marcando a coluna que corresponde ao período de uma transação realizada;
 
     Args:
@@ -238,7 +244,7 @@ def preencheMatriz( matIdChurn: np.ndarray, datesVector: pd.DatetimeIndex, cdf: 
 ################################         CALCULADORES DE CHURN        ################################################
 
 # Função eu calcula o valor do Churn Binário de cada cliente e salva em um novo Dataframe. #
-def calculaChurnBinario( dfIdChurn: pd.DataFrame, cdf: pd.DataFrame ) -> pd.DataFrame:
+def _calculaChurnBinario( dfIdChurn: pd.DataFrame, cdf: pd.DataFrame ) -> pd.DataFrame:
     """Calcula o churn binário;
 
     Args:
@@ -250,11 +256,12 @@ def calculaChurnBinario( dfIdChurn: pd.DataFrame, cdf: pd.DataFrame ) -> pd.Data
     """
     
     media = (1 - dfIdChurn.mean( axis = 1 ) ).round().astype( int )
-    churn = constroiChurn(media, cdf)
+    churn = _constroiChurn( media, cdf )
+
     return churn
 
-# Função eu calcula o valor de qualquer Churn Ponderado de cada cliente e salva em um novo Dataframe. #
-def calculaChurnInterno( dfIdChurn: pd.DataFrame, cdf: pd.DataFrame, valorMedia: float ) -> pd.DataFrame:
+# Função eu calcula o valor de qualquer Churn Ponderado de cada cliente e salva em um novo Dataframe.#
+def _calculaChurnInterno( dfIdChurn: pd.DataFrame, cdf: pd.DataFrame, valorMedia: float ) -> pd.DataFrame:
     """ Calcula o churn de qualquer modelo, exceto o binário;
 
     Args:
@@ -267,9 +274,11 @@ def calculaChurnInterno( dfIdChurn: pd.DataFrame, cdf: pd.DataFrame, valorMedia:
     """
     
     media = 1 - ( dfIdChurn.sum( axis = 1 ) / valorMedia )
-    churn = constroiChurn(media, cdf)
+    churn = _constroiChurn( media, cdf )
+
     return churn
 
+# Função que calcula o churn com base em um arquivo de transação com qualquer um dos modelos disponíveis. #
 def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, base: float = 1 ) -> pd.DataFrame:
     """Calcula a probabilidade de churn em qualquer modelo com base em um arquivo de transações;
 
@@ -282,56 +291,60 @@ def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, bas
             modelo= "exponencial";
             modelo= "recente";
         periodos (int, optional): total de períodos de separação de dados desejada (Defaults to 10);
-        base (float, optional): base desejada para o cálculo exponencial (Defaults to 1);
+        base (float, optional): base desejada para o cálculo exponencial (obrigatório preencher e somente preencher quando o modelo escolhido for exponencial, preencher com valores maiores que 1);
 
     Returns:
         pd.DataFrame: retorna o dataFrame resultante do churn calculado;
     """
 
-    # Leitura do DataFrame de transação
-    cdf = lerArquivo( arquivo )
+    # Leitura do DataFrame de transação #
+    cdf = _lerArquivo( arquivo )
 
-    # Construção do vetor de data inicial de cada período
-    dataVector = controiVetorDatas( cdf, periodos )
+    # Construção do vetor de data inicial de cada período #
+    dataVector = _controiVetorDatas( cdf, periodos )
 
-    # Constroi a matriz de clientes por período
-    matriz = constroiMatrizClientePorPeriodo( cdf, periodos )
+    # Constroi a matriz de clientes por período #
+    matriz = _constroiMatrizClientePorPeriodo( cdf, periodos )
 
     # Preenche a matriz
-    preencheMatriz( matriz, dataVector, cdf, base )
+    _preencheMatriz( matriz, dataVector, cdf, base )
 
-    # Transforma a matriz para um DataFrame
-    dt = matrizParaDataframe( matriz, dataVector )
+    # Transforma a matriz para um DataFrame #
+    dt = _matrizParaDataframe( matriz, dataVector )
 
-    # Caso o modelo seja o Binário
+    # Caso o modelo seja o Binário #
     if ( modelo == "binario" ):
-        churn = calculaChurnBinario( dt, cdf )
-        salvaArquivo(churn, "churnBinario.csv")
+        churn = _calculaChurnBinario( dt, cdf )
+        _salvaArquivo( churn, "churnBinario.csv" )
 
-    # Caso o modelo seja o Simples
+    # Caso o modelo seja o Simples #
     elif ( modelo == "simples" ):
-        valorMedia = calculaSimples( periodos )
-        churn = calculaChurnInterno( dt, cdf, valorMedia )
-        salvaArquivo(churn, "churnSimples.csv")
+        valorMedia = _calculaSimples( periodos )
+        churn = _calculaChurnInterno( dt, cdf, valorMedia )
+        _salvaArquivo( churn, "churnSimples.csv" )
 
-    # Caso o modelo seja o Linear
+    # Caso o modelo seja o Linear #
     elif( modelo == "linear" ):
-        valorMedia = calculaLinear( periodos )
-        churn = calculaChurnInterno( dt, cdf, valorMedia )
-        salvaArquivo(churn, "churnLinear.csv")
+        valorMedia = _calculaLinear( periodos )
+        churn = _calculaChurnInterno( dt, cdf, valorMedia )
+        _salvaArquivo( churn, "churnLinear.csv" )
 
-    # Caso o modelo seja o exponencial
+    # Caso o modelo seja o exponencial #
     elif ( modelo == "exponencial" ):
-        valorMedia = calculaExponencial( periodos, base )
-        churn = calculaChurnInterno( dt, cdf, valorMedia )
-        salvaArquivo(churn, "churnExponencial.csv")
+        valorMedia = _calculaExponencial( periodos, base )
+        churn = _calculaChurnInterno( dt, cdf, valorMedia )
+        _salvaArquivo( churn, "churnExponencial.csv" )
 
-    # Caso o modelo seja o Rencente
+    # Caso o modelo seja o Rencente #
     elif ( modelo == "recente" ):
-        valorMedia = calculaRecenciaCliente( matriz, dataVector )
-        churn = calculaChurnInterno( dt, cdf, valorMedia )
-        salvaArquivo(churn, "churnRecente.csv")
+        valorMedia = _calculaRecenciaCliente( matriz, dataVector )
+        churn = _calculaChurnInterno( dt, cdf, valorMedia )
+        _salvaArquivo( churn, "churnRecente.csv" )
 
+    # Caso o modelo escolhido não exista #
+    else:
+        churn = None
+    
     return churn
 
 

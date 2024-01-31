@@ -1,8 +1,0 @@
-{
-    "python.analysis.autoImportCompletions": false,
-    "python.analysis.importFormat": "absolute",
-    "python.autoComplete.extraPaths": [
-        
-    ],
-    "python.analysis.extraPaths": []
-}
