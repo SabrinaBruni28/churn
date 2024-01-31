@@ -1,8 +1,6 @@
-import Comparacao as ax
-import pandas as pd
-import numpy as np
+import CasosTeste as ax
 
-e = np.e
+e = ax.np.e
 
 matriz = [
             [0, 1, 0, 0 ,0],
@@ -20,8 +18,8 @@ ax.calculaChurnMatrizERRO(df)
 
 
 
-teste1 = pd.read_csv( "churnComparacao.csv", sep="\s+")
-teste2 = pd.read_csv( "churnERRO.csv", sep="\s+")
+teste1 = ax.pd.read_csv( "churnComparacao.csv", sep="\s+")
+teste2 = ax.pd.read_csv( "churnERRO.csv", sep="\s+")
 
 print(teste1)
 print(teste2)
