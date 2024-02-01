@@ -161,7 +161,7 @@ def _calculaRecenciaCliente( matIdChurn: np.ndarray, datesVector: pd.DatetimeInd
     for j in range( len( matIdChurn ) ):
         comeca_compra = 0
         media_por_cliente.append(0)
-        for i in range( len( datesVector ) - 1 ):
+        for i in range( len( datesVector ) ):
             if comeca_compra:
                 media_por_cliente[j] += 1
             elif matIdChurn[j][i] == 1:

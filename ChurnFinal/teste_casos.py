@@ -2,13 +2,13 @@ import CasosTeste as ax
 
 e = ax.np.e
 
-matriz = [
+matriz = ax.np.array( [
             [0, 1, 0, 0 ,0],
             [0, 0, 1, 0 ,0],
             [0, 0, 0, 1 ,0],
             [0, 0, 1, 0 ,0],
             [0, 1, 0, 0 ,0]
-        ]
+        ])
 
 vetor_real = [1.0, 1.0, 0.0, 1.0, 1.0 ]
 
