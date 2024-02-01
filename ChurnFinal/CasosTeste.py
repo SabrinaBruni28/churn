@@ -8,15 +8,16 @@ import numpy as np
 
 #########################################       FUNÇÃO DE PREENCHER MATRIZ       ######################################
 
+# Função que preenche a matriz de teste multiplicando pela base desejada. #
 def _preencheNovaMatriz( matriz: np.ndarray, base: float ) -> np.ndarray: 
-    """_summary_
+    """Preeche a matriz de teste com o valor da base do modelo desejado;
 
     Args:
-        matriz (np.ndarray): _description_
-        base (float): _description_
+        matriz (np.ndarray): matriz de teste;
+        base (float): base do modelo desejado;
 
     Returns:
-        np.ndarray: _description_
+        np.ndarray: retorna a nova matriz preenchida com uma nova base;
     """
     
     num_linhas, num_colunas = matriz.shape
@@ -24,7 +25,7 @@ def _preencheNovaMatriz( matriz: np.ndarray, base: float ) -> np.ndarray:
     nova_matriz = np.copy( matriz )
     
     for i in range( num_linhas ):
-        for j in range( num_colunas):
+        for j in range( num_colunas ):
             # f(a,b) => b, se a = 0 e a**b, se a != 0;
             # f(a,b) = a**b + b * !a;
             valor = ( base ** ( j + 1 ) ) + ( ( j + 1 ) * ( not base ) )
@@ -54,20 +55,24 @@ def calculaChurnMatrizTeste( matriz: np.ndarray, vetorReal: float ) -> pd.DataFr
     df = pd.DataFrame( matriz )
     cdf = pd.DataFrame( { "id_cliente": range( len( df ) ) } )
     
+    num_linhas, num_colunas = matriz.shape
+    
     # Converta a matriz em uma lista de strings #
     lista_strings = [''.join( map( str, linha ) ) for linha in matriz]
 
     # Crie um DataFrame com uma coluna dos casos de teste #
     comparacaoChurn = pd.DataFrame( {'casos_teste': lista_strings} )
     
-
+    # Converter a matriz para float
+    matriz = matriz.astype(float)
+    
     # Modelo Binário #
     churn = ax._calculaChurnBinario( df, cdf )
     comparacaoChurn = pd.concat( [comparacaoChurn, churn], axis=1 )
     comparacaoChurn.rename( columns = { 'churn': "churnBinario" }, inplace = True )
 
     # Modelo Simples #
-    valorMedia = ax._calculaSimples( len(matriz[0])+1 )
+    valorMedia = ax._calculaSimples( num_colunas + 1 )
     churn = ax._calculaChurnInterno( df, cdf, valorMedia )
     comparacaoChurn = pd.merge( comparacaoChurn, churn, on = "id" )
     comparacaoChurn.rename( columns = { 'churn': "churnSimples" }, inplace = True )
@@ -75,7 +80,7 @@ def calculaChurnMatrizTeste( matriz: np.ndarray, vetorReal: float ) -> pd.DataFr
     # Modelo Linear #
     nova_matriz = _preencheNovaMatriz(matriz, 0)
     df = pd.DataFrame( nova_matriz )
-    valorMedia = ax._calculaLinear( len(matriz[0])+1 )
+    valorMedia = ax._calculaLinear( num_colunas + 1 )
     churn = ax._calculaChurnInterno( df, cdf, valorMedia )
     comparacaoChurn = pd.merge( comparacaoChurn, churn, on = "id" )
     comparacaoChurn.rename(columns = { 'churn': "churnLinear" }, inplace = True )
@@ -83,7 +88,7 @@ def calculaChurnMatrizTeste( matriz: np.ndarray, vetorReal: float ) -> pd.DataFr
     # Modelo exponencial de base 2 #
     nova_matriz = _preencheNovaMatriz(matriz, 2)
     df = pd.DataFrame( nova_matriz )
-    valorMedia = ax._calculaExponencial( len(matriz[0])+1, 2 )
+    valorMedia = ax._calculaExponencial( num_colunas + 1, 2 )
     churn = ax._calculaChurnInterno( df, cdf, valorMedia )
     comparacaoChurn = pd.merge( comparacaoChurn, churn, on = "id" )
     comparacaoChurn.rename(columns = { 'churn': "churnExponencial_2" }, inplace = True )
@@ -91,15 +96,15 @@ def calculaChurnMatrizTeste( matriz: np.ndarray, vetorReal: float ) -> pd.DataFr
     # Modelo exponencial de base e #
     nova_matriz = _preencheNovaMatriz(matriz, e)
     df = pd.DataFrame( nova_matriz )
-    valorMedia = ax._calculaExponencial( len(matriz[0])+1, e )
+    valorMedia = ax._calculaExponencial( num_colunas + 1, e )
     churn = ax._calculaChurnInterno( df, cdf, valorMedia )
     comparacaoChurn = pd.merge( comparacaoChurn, churn, on = "id" )
     comparacaoChurn.rename( columns = { 'churn': "churnExponencial_e" }, inplace = True )
 
     # Modelo Rencente #
     df = pd.DataFrame( matriz )
-    valorMedia = ax._calculaRecenciaCliente( matriz, df.columns )
-    churn = ax._calculaChurnInterno( df, cdf, valorMedia )
+    valorMedia = ax._calculaRecenciaCliente( matriz )
+    churn = ax._calculaChurnInternoR( df, cdf, valorMedia )
     comparacaoChurn = pd.merge( comparacaoChurn, churn, on = "id" )
     comparacaoChurn.rename( columns = { 'churn': "churnRecente" }, inplace = True )
 
@@ -132,22 +137,22 @@ def calculaChurnMatrizERRO(comparacaoChurn: pd.DataFrame) -> pd.DataFrame:
     comparacaoERRO["casos_teste"] = comparacaoChurn["casos_teste"]
     
     # Modelo Binário #
-    comparacaoERRO["ERROchurnBinario"] = comparacaoChurn["churnBinario"] - comparacaoChurn["Real"]
+    comparacaoERRO["ERROchurnBinario"] = (comparacaoChurn["churnBinario"] - comparacaoChurn["Real"]).round(10)
     
     # Modelo Simples #
-    comparacaoERRO["ERROchurnSimples"] = comparacaoChurn["churnSimples"] - comparacaoChurn["Real"]
+    comparacaoERRO["ERROchurnSimples"] = (comparacaoChurn["churnSimples"] - comparacaoChurn["Real"]).round(10)
     
     # Modelo Linear #
-    comparacaoERRO["ERROchurnLinear"] = comparacaoChurn["churnLinear"] - comparacaoChurn["Real"]
+    comparacaoERRO["ERROchurnLinear"] = (comparacaoChurn["churnLinear"] - comparacaoChurn["Real"]).round(10)
 
     # Modelo exponencial de base 2 #
-    comparacaoERRO["ERROchurnExponencial_2"] = comparacaoChurn["churnExponencial_2"] - comparacaoChurn["Real"]
+    comparacaoERRO["ERROchurnExponencial_2"] = (comparacaoChurn["churnExponencial_2"] - comparacaoChurn["Real"]).round(10)
 
     # Modelo exponencial de base e #
-    comparacaoERRO["ERROchurnExponencial_e"] = comparacaoChurn["churnExponencial_e"] - comparacaoChurn["Real"]
+    comparacaoERRO["ERROchurnExponencial_e"] = (comparacaoChurn["churnExponencial_e"] - comparacaoChurn["Real"]).round(10)
 
     # Modelo Rencente #
-    comparacaoERRO["ERROchurnRecente"] = comparacaoChurn["churnRecente"] - comparacaoChurn["Real"]
+    comparacaoERRO["ERROchurnRecente"] = (comparacaoChurn["churnRecente"] - comparacaoChurn["Real"]).round(10)
 
     # Salva o dataframe em um arquivo CSV #
     ax._salvaArquivo( comparacaoERRO, "churnERRO.csv" )

@@ -146,7 +146,7 @@ def _constroiChurn( media: pd.Series, cdf: pd.DataFrame ) -> pd.DataFrame:
 ###############################       CALCULADORES DO DENOMINADOR DA MÉDIA        ######################################
 
 # Função que retorna um vetor com o valor total que irá do denominador no calculo da média baseado na recência do cliente. #
-def _calculaRecenciaCliente( matIdChurn: np.ndarray, datesVector: pd.DatetimeIndex ) -> list:
+def _calculaRecenciaCliente( matIdChurn: np.ndarray ) -> list:
     """Calcula o valor do denominador do modelo de média por recência de cada cliente;
 
     Args:
@@ -156,12 +156,14 @@ def _calculaRecenciaCliente( matIdChurn: np.ndarray, datesVector: pd.DatetimeInd
     Returns:
         list: retorna uma lista dos valores do denominador para o cálculo da média de cada cliente individualmente;
     """
-    
+    num_linhas, num_colunas = matIdChurn.shape
+
     media_por_cliente = []
-    for j in range( len( matIdChurn ) ):
+    
+    for j in range( num_linhas ):
         comeca_compra = 0
         media_por_cliente.append(0)
-        for i in range( len( datesVector ) ):
+        for i in range( num_colunas ):
             if comeca_compra:
                 media_por_cliente[j] += 1
             elif matIdChurn[j][i] == 1:
@@ -199,7 +201,8 @@ def _calculaExponencial( totalPeriodos: int, base: float ) -> float:
     
     # PG
     # Sn = a1( q**n - 1 ) / (q-1)
-    return ( base ) * ( base ** ( totalPeriodos-1 ) - 1 ) / ( base - 1 )
+    a = ( base ) * ( base ** ( totalPeriodos-1 ) - 1 ) / ( base - 1 )
+    return a
 
 # Função que calcula o valor do denominador na média simples. #
 def _calculaSimples( totalPeriodos: int ) -> int:
@@ -274,9 +277,28 @@ def _calculaChurnInterno( dfIdChurn: pd.DataFrame, cdf: pd.DataFrame, valorMedia
     """
     
     media = 1 - ( dfIdChurn.sum( axis = 1 ) / valorMedia )
+    media = media.round(10).abs()
     churn = _constroiChurn( media, cdf )
 
     return churn
+
+# Função eu calcula o valor do Churn Rencente de cada cliente e salva em um novo Dataframe.#
+def _calculaChurnInternoR( dfIdChurn: pd.DataFrame, cdf: pd.DataFrame, valorMedia: pd.Series ) -> pd.DataFrame:
+    """ Calcula o churn de qualquer modelo, exceto o binário;
+
+    Args:
+        dfIdChurn (pd.DataFrame): dataFrame com os valores da matriz preenchidos;
+        cdf (pd.DataFrame): dataframe do arquivo de transações;
+        valorMedia (float): valor do denominador calculado por outras funções;
+
+    Returns:
+        pd.DataFrame: retorna o dataFrame resultante do churn calculado;
+    """
+    media = 1 - ( dfIdChurn.sum(axis=1) / [v if v != 0 else 1 for v in valorMedia] )
+    churn = _constroiChurn( media, cdf )
+
+    return churn
+
 
 # Função que calcula o churn com base em um arquivo de transação com qualquer um dos modelos disponíveis. #
 def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, base: float = 1 ) -> pd.DataFrame:
@@ -337,8 +359,8 @@ def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, bas
 
     # Caso o modelo seja o Rencente #
     elif ( modelo == "recente" ):
-        valorMedia = _calculaRecenciaCliente( matriz, dataVector )
-        churn = _calculaChurnInterno( dt, cdf, valorMedia )
+        valorMedia = _calculaRecenciaCliente( matriz )
+        churn = _calculaChurnInternoR( dt, cdf, valorMedia )
         _salvaArquivo( churn, "churnRecente.csv" )
 
     # Caso o modelo escolhido não exista #
