@@ -1,4 +1,3 @@
-
 ######################################       CÁLCULO DE CHURN        #################################################
 
 #############################       Autor(a): Sabrina Bruni de Souza Faria      ######################################
@@ -301,7 +300,7 @@ def _calculaChurnInternoR( dfIdChurn: pd.DataFrame, cdf: pd.DataFrame, valorMedi
 
 
 # Função que calcula o churn com base em um arquivo de transação com qualquer um dos modelos disponíveis. #
-def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, base: float = 1 ) -> pd.DataFrame:
+def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, base: float = 2 ) -> pd.DataFrame:
     """Calcula a probabilidade de churn em qualquer modelo com base em um arquivo de transações;
 
     Args:
@@ -313,7 +312,9 @@ def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, bas
             modelo= "exponencial";
             modelo= "recente";
         periodos (int, optional): total de períodos de separação de dados desejada (Defaults to 10);
-        base (float, optional): base desejada para o cálculo exponencial (obrigatório preencher e somente preencher quando o modelo escolhido for exponencial, preencher com valores maiores que 1);
+        base (float, optional): base desejada para o cálculo exponencial;
+        (Preencher com valores maiores que 1);
+        (Defaults to 2);
 
     Returns:
         pd.DataFrame: retorna o dataFrame resultante do churn calculado;
@@ -328,39 +329,87 @@ def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, bas
     # Constroi a matriz de clientes por período #
     matriz = _constroiMatrizClientePorPeriodo( cdf, periodos )
 
-    # Preenche a matriz
-    _preencheMatriz( matriz, dataVector, cdf, base )
-
-    # Transforma a matriz para um DataFrame #
-    dt = _matrizParaDataframe( matriz, dataVector )
 
     # Caso o modelo seja o Binário #
     if ( modelo == "binario" ):
+        # Preenche a matriz
+        _preencheMatriz( matriz, dataVector, cdf, 1 )
+
+        # Transforma a matriz para um DataFrame #
+        dt = _matrizParaDataframe( matriz, dataVector )
+        
+        # Calcula o churn #
         churn = _calculaChurnBinario( dt, cdf )
+        
+        # Salva em um arquivo CSV #
         _salvaArquivo( churn, "churnBinario.csv" )
 
     # Caso o modelo seja o Simples #
     elif ( modelo == "simples" ):
+        # Preenche a matriz
+        _preencheMatriz( matriz, dataVector, cdf, 1 )
+
+        # Transforma a matriz para um DataFrame #
+        dt = _matrizParaDataframe( matriz, dataVector )
+        
+        # Calcula o valor do denominador #
         valorMedia = _calculaSimples( periodos )
+        
+        # Calcula o churn #
         churn = _calculaChurnInterno( dt, cdf, valorMedia )
+        
+        # Salva em um arquivo CSV #
         _salvaArquivo( churn, "churnSimples.csv" )
 
     # Caso o modelo seja o Linear #
     elif( modelo == "linear" ):
+        # Preenche a matriz
+        _preencheMatriz( matriz, dataVector, cdf, 0 )
+
+        # Transforma a matriz para um DataFrame #
+        dt = _matrizParaDataframe( matriz, dataVector )
+        
+        # Calcula o valor do denominador #
         valorMedia = _calculaLinear( periodos )
+        
+        # Calcula o churn #
         churn = _calculaChurnInterno( dt, cdf, valorMedia )
+        
+        # Salva em um arquivo CSV #
         _salvaArquivo( churn, "churnLinear.csv" )
 
     # Caso o modelo seja o exponencial #
     elif ( modelo == "exponencial" ):
+        # Preenche a matriz
+        _preencheMatriz( matriz, dataVector, cdf, base )
+
+        # Transforma a matriz para um DataFrame #
+        dt = _matrizParaDataframe( matriz, dataVector )
+        
+        # Calcula o valor do denominador #
         valorMedia = _calculaExponencial( periodos, base )
+        
+        # Calcula o churn #
         churn = _calculaChurnInterno( dt, cdf, valorMedia )
+        
+        # Salva em um arquivo CSV #
         _salvaArquivo( churn, "churnExponencial.csv" )
 
     # Caso o modelo seja o Rencente #
     elif ( modelo == "recente" ):
+        # Preenche a matriz
+        _preencheMatriz( matriz, dataVector, cdf, 1 )
+
+        # Transforma a matriz para um DataFrame #
+        dt = _matrizParaDataframe( matriz, dataVector )
+        
+        # Calcula o valor do denominador #
         valorMedia = _calculaRecenciaCliente( matriz )
+        
+        # Calcula o churn #
         churn = _calculaChurnInternoR( dt, cdf, valorMedia )
+        
+        # Salva em um arquivo CSV #
         _salvaArquivo( churn, "churnRecente.csv" )
 
     # Caso o modelo escolhido não exista #
