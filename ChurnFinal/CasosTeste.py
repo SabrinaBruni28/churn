@@ -20,17 +20,25 @@ def _preencheNovaMatriz( matriz: np.ndarray, base: float ) -> np.ndarray:
         np.ndarray: retorna a nova matriz preenchida com uma nova base;
     """
     
+    # Salva a quantida de linhas e colunas da matriz #
     num_linhas, num_colunas = matriz.shape
     
+    # Faz uma cópia da matriz original #
     nova_matriz = np.copy( matriz )
     
+    # Percorre a matriz #
     for i in range( num_linhas ):
         for j in range( num_colunas ):
             # f(a,b) => b, se a = 0 e a**b, se a != 0;
             # f(a,b) = a**b + b * !a;
             valor = ( base ** ( j + 1 ) ) + ( ( j + 1 ) * ( not base ) )
+
+            # Multiplica a posição pela base desejada #
+            # Se a posição for zero, continuará zero #
+            # Se a posição for 1, o valor seja a nova base #
             nova_matriz[i][j] = nova_matriz[i][j] * valor
     
+    # Retorna a nova matriz #
     return nova_matriz
 
 
@@ -59,10 +67,10 @@ def calculaChurnMatrizTeste( matriz: np.ndarray, vetorReal: float ) -> pd.DataFr
     # Cria dataframe com id's #
     cdf = pd.DataFrame( { "id_cliente": range( num_linhas ) } )
     
-    # Converta a matriz em uma lista de strings #
+    # Converte a matriz em uma lista de strings #
     lista_strings = [''.join( map( str, linha ) ) for linha in matriz]
 
-    # Crie um DataFrame com uma coluna dos casos de teste #
+    # Cria um DataFrame com uma coluna dos casos de teste #
     comparacaoChurn = pd.DataFrame( {'casos_teste': lista_strings} )
     
     # Converter a matriz para float
@@ -190,6 +198,7 @@ def calculaChurnMatrizTeste( matriz: np.ndarray, vetorReal: float ) -> pd.DataFr
 
     ############################# Valor Real ###########################################
     
+    # Adiciona uma coluna com os valores reais de churn #
     comparacaoChurn["Real"] = vetorReal
     
     ####################################################################################
@@ -218,8 +227,10 @@ def calculaChurnMatrizERRO(comparacaoChurn: pd.DataFrame) -> pd.DataFrame:
     # Cria uma dataframe vazio #
     comparacaoERRO = pd.DataFrame()
     
-    # O dataframe criado com a mesma coluna de casos de teste #
+    # O dataframe criado recebe a mesma coluna de casos de teste #
     comparacaoERRO["casos_teste"] = comparacaoChurn["casos_teste"]
+    
+    ########## Cada coluna de um modelo é subtraída pelo valor real e arredondada para 10 casas decimais ####################
     
     # Modelo Binário #
     comparacaoERRO["ERROchurnBinario"] = (comparacaoChurn["churnBinario"] - comparacaoChurn["Real"]).round(10)
@@ -238,6 +249,8 @@ def calculaChurnMatrizERRO(comparacaoChurn: pd.DataFrame) -> pd.DataFrame:
 
     # Modelo Rencente #
     comparacaoERRO["ERROchurnRecente"] = (comparacaoChurn["churnRecente"] - comparacaoChurn["Real"]).round(10)
+
+    #########################################################################################################################
 
     # Salva o dataframe em um arquivo CSV #
     ax._salvaArquivo( comparacaoERRO, "churnERRO.csv" )
