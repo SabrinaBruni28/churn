@@ -371,7 +371,9 @@ def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, bas
             modelo= "linear";
             modelo= "exponencial";
             modelo= "recente";
-        periodos (int, optional): total de períodos de separação de dados desejada (Defaults to 10);
+        periodos (int, optional): total de períodos de separação de dados desejada 
+        (Defaults to 10);
+        (Preencher com valores maiores que 1);
         base (float, optional): base desejada para o cálculo exponencial;
         (Preencher com valores maiores que 1);
         (Defaults to 2);
