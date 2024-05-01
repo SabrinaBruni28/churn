@@ -99,7 +99,7 @@ def _controiVetorDatas( cdf: pd.DataFrame, totalPeriodos: int ) -> pd.DatetimeIn
     # Retorna oo vetor de datas #
     return dates_vector
 
-# Função que constroi a matriz de clientes por períodos preenchida com zeros. #
+# Função que constroi a tabela de clientes por períodos preenchida com zeros. #
 def _constroiTabelaClientePorPeriodo( cdf: pd.DataFrame, dates_vector: pd.DatetimeIndex ) -> pd.DataFrame:
     """
     Constroi uma tabela de clientes por períodos;
@@ -109,7 +109,7 @@ def _constroiTabelaClientePorPeriodo( cdf: pd.DataFrame, dates_vector: pd.Dateti
         dates_vector (pd.DatetimeIndex): vetor de datas dos períodos;
 
     Returns:
-        np.ndarray: retorna a matriz de clientes por períodos preenchida com zeros;
+        pd.DataFrame: retorna a tabela de clientes por períodos preenchida com zeros;
     """
     # Cria um dataframe com o índice de id de clientes e colunas com a data dos períodos #
     tabela_idCliente = pd.DataFrame(index=cdf["id_cliente"].unique(), columns= dates_vector[:-1])
@@ -206,7 +206,7 @@ def _calculaExponencial( totalPeriodos: int, base: float ) -> float:
     """
     
     # PG
-    # Sn = a1( q**n - 1 ) / (q-1)
+    # Sn = a1( q**n - 1 ) / (q - 1)
     return ( base ) * ( base ** ( totalPeriodos-1 ) - 1 ) / ( base - 1 )
 
 # Função que calcula o valor do denominador na média simples. #
@@ -227,7 +227,7 @@ def _calculaSimples( totalPeriodos: int ) -> int:
 
 ######################################         PREENCHEDOR       #####################################################
 
-# Função que preenche a matriz com uma base escolhida nas datas de compras que correspondem a determinado período. #
+# Função que preenche a tabela com uma base escolhida nas datas de compras que correspondem a determinado período. #
 def _preencheTabela( row: pd.Series, tabela: pd.DataFrame, datesVector: pd.DatetimeIndex, base: float = 1 ) -> None:
     """
     Preeche a tabela de clientes por períodos, marcando a coluna que corresponde ao período de uma transação realizada;
@@ -251,7 +251,7 @@ def _preencheTabela( row: pd.Series, tabela: pd.DataFrame, datesVector: pd.Datet
             # f(a,b) => b, se a = 0 e a**b, se a != 0;
             # f(a,b) = a**b + b * !a;
 
-            # Na posição do cliente na matriz é colocado o valor de preenchimento do modelo desejado #
+            # Na linha do cliente na coluna do período que a data corresponde na tabela é colocado o valor de preenchimento do modelo desejado #
             tabela.loc[row.name, datesVector[i]] = ( base ** ( i + 1 ) + ( i + 1 ) * ( not base ) )
             break
 
@@ -282,7 +282,7 @@ def _calculaChurnBinario( tabela: pd.DataFrame ) -> pd.DataFrame:
 # Função eu calcula o valor de qualquer Churn Ponderado de cada cliente e salva em um novo Dataframe.#
 def _calculaChurnInterno( tabela: pd.DataFrame, valorMedia: float ) -> pd.DataFrame:
     """
-    Calcula o churn de qualquer modelo, exceto o binário;
+    Calcula o churn de qualquer modelo, exceto o binárioe o recente;
 
     Args:
         tabela (pd.DataFrame): dataFrame de clientes por períodos;
@@ -306,7 +306,7 @@ def _calculaChurnInterno( tabela: pd.DataFrame, valorMedia: float ) -> pd.DataFr
 # Função eu calcula o valor do Churn Rencente de cada cliente e salva em um novo Dataframe.#
 def _calculaChurnInternoR( tabela: pd.DataFrame ) -> pd.DataFrame:
     """
-    Calcula o churn de qualquer modelo, exceto o binário;
+    Calcula o churn pelo modelo recente;
 
     Args:
         tabela (pd.DataFrame): dataFrame de clientes por períodos com a coluna 'media' adicionada;
@@ -356,14 +356,14 @@ def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, bas
     # Construção do vetor de data inicial de cada período #
     dataVector = _controiVetorDatas( cdf, periodos )
 
-    # Constroi a matriz de clientes por período #
+    # Constroi a tabela de clientes por período #
     tabela = _constroiTabelaClientePorPeriodo(cdf, dataVector)
     
     cdf.set_index("id_cliente", inplace=True)
 
     ###################### Caso o modelo seja o Binário #############################
     if ( modelo == "binario" ):
-        # Preenche a matriz
+        # Preenche a tabela #
         cdf.apply( _preencheTabela, args=( tabela, dataVector, 1 ), axis=1 )
         
         # Calcula o churn #
@@ -374,7 +374,7 @@ def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, bas
 
     #################### Caso o modelo seja o Simples ##############################
     elif ( modelo == "simples" ):
-        # Preenche a matriz
+        # Preenche a tabela #
         cdf.apply( _preencheTabela, args=( tabela, dataVector, 1 ), axis=1 )
         
         # Calcula o valor do denominador #
@@ -388,7 +388,7 @@ def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, bas
 
     ##################### Caso o modelo seja o Linear #############################
     elif( modelo == "linear" ):
-        # Preenche a matriz
+        # Preenche a tabela #
         cdf.apply( _preencheTabela, args=( tabela, dataVector, 0 ), axis=1 )
         
         # Calcula o valor do denominador #
@@ -402,7 +402,7 @@ def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, bas
 
     ################### Caso o modelo seja o exponencial #########################
     elif ( modelo == "exponencial" ):
-        # Preenche a matriz
+        # Preenche a tabela #
         cdf.apply( _preencheTabela, args=( tabela, dataVector, base ), axis=1 )
         
         # Calcula o valor do denominador #
@@ -416,7 +416,7 @@ def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, bas
 
     ################## Caso o modelo seja o Rencente ############################
     elif ( modelo == "recente" ):
-        # Preenche a matriz
+        # Preenche a tabela #
         cdf.apply( _preencheTabela, args=( tabela, dataVector, 1 ), axis=1 )
         
         # Cria uma coluna de valor do denominador da média para cada cliente preenchida com zero #

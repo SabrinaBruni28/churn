@@ -10,7 +10,8 @@ import csv
 
 # Função que define os tipos de cada coluna, elimina as colunas desnecessárias e acrescenta colunas. #
 def _defineDataframe( cdf: pd.DataFrame ) -> None:
-    """Manipula o dataframe de transações adicionando, retirando e definindo os tipos das colunas;
+    """
+    Manipula o dataframe de transações adicionando, retirando e definindo os tipos das colunas;
 
     Args:
         cdf (pd.DataFrame): dataframe do arquivo de transações;
@@ -29,7 +30,8 @@ def _defineDataframe( cdf: pd.DataFrame ) -> None:
 
 # Função que calcula a quantidade de clientes no Dataframe. #
 def _totalClientes( cdf: pd.DataFrame ) -> int:
-    """Calcula a quantidade de clientes diferentes em um dataframe de transações;
+    """
+    Calcula a quantidade de clientes diferentes em um dataframe de transações;
 
     Args:
         cdf (pd.DataFrame): dataframe do arquivo de transações;
@@ -42,7 +44,8 @@ def _totalClientes( cdf: pd.DataFrame ) -> int:
 
 # Função que transforma a matriz para um DataFrame #
 def _matrizParaDataframe( matIdChurn: np.ndarray, datesVector: pd.DatetimeIndex ) -> pd.DataFrame:
-    """Transforma uma matriz para um dataframe;
+    """
+    Transforma uma matriz para um dataframe;
 
     Args:
         matIdChurn (np.ndarray): matriz de clientes por períodos preenchida;
@@ -66,7 +69,8 @@ def _matrizParaDataframe( matIdChurn: np.ndarray, datesVector: pd.DatetimeIndex 
 
 # Função que lê um arquivo csv e salva como um Dataframe. #
 def _lerArquivo( arquivo: str ) -> pd.DataFrame:
-    """Lê um arquivo de CSV e salva em uma variável de dataframe;
+    """
+    Lê um arquivo de CSV e salva em uma variável de dataframe;
 
     Args:
         arquivo (str): nome do arquivo de transações;
@@ -88,7 +92,8 @@ def _lerArquivo( arquivo: str ) -> pd.DataFrame:
 
 # Função que salva o Dataframe em um arquivo. #
 def _salvaArquivo( churn: pd.DataFrame, nomeArquivo: str ) -> None:
-    """Salva um dataframe em um arquivo CSV;
+    """
+    Salva um dataframe em um arquivo CSV;
 
     Args:
         churn (pd.DataFrame): o dataframe de churn resultante;
@@ -103,7 +108,8 @@ def _salvaArquivo( churn: pd.DataFrame, nomeArquivo: str ) -> None:
 
 # Função que controi o vetor de datas de inicio de cada período. #
 def _controiVetorDatas( cdf: pd.DataFrame, totalPeriodos: int ) -> pd.DatetimeIndex:
-    """Constroi um vetor de datas de períodos com base em um intervalo de transações e quantidade de períodos desejados;
+    """
+    Constroi um vetor de datas de períodos com base em um intervalo de transações e quantidade de períodos desejados;
 
     Args:
         cdf (pd.DataFrame): dataframe do arquivo de transações;
@@ -129,7 +135,8 @@ def _controiVetorDatas( cdf: pd.DataFrame, totalPeriodos: int ) -> pd.DatetimeIn
 
 # Função que constroi a matriz de clientes por períodos preenchida com zeros. #
 def _constroiMatrizClientePorPeriodo( cdf: pd.DataFrame, totalPeriodos: int ) -> np.ndarray:
-    """Constroi uma matriz de clientes por períodos;
+    """
+    Constroi uma matriz de clientes por períodos;
 
     Args:
         cdf (pd.DataFrame): dataframe do arquivo de transações;
@@ -147,7 +154,8 @@ def _constroiMatrizClientePorPeriodo( cdf: pd.DataFrame, totalPeriodos: int ) ->
 
 # Função que constroi o Dataframe do churn. #
 def _constroiChurn( media: pd.Series, cdf: pd.DataFrame ) -> pd.DataFrame:
-    """Constroi o dataframe do churn;
+    """
+    Constroi o dataframe do churn;
 
     Args:
         media (pd.Series): serie de valores de churn já calculados;
@@ -174,7 +182,8 @@ def _constroiChurn( media: pd.Series, cdf: pd.DataFrame ) -> pd.DataFrame:
 
 # Função que retorna um vetor com o valor total que irá do denominador no calculo da média baseado na recência do cliente. #
 def _calculaRecenciaCliente( matIdChurn: np.ndarray ) -> list:
-    """Calcula o valor do denominador do modelo de média por recência de cada cliente;
+    """
+    Calcula o valor do denominador do modelo de média por recência de cada cliente;
 
     Args:
         matIdChurn (np.ndarray): matriz de clientes por períodos preenchida;
@@ -216,7 +225,8 @@ def _calculaRecenciaCliente( matIdChurn: np.ndarray ) -> list:
 
 # Função que calcula o valor do denominador na média ponderada linear. #
 def _calculaLinear( totalPeriodos: int ) -> float:
-    """Calcula o valor do denominador do modelo de média linear;
+    """
+    Calcula o valor do denominador do modelo de média linear;
 
     Args:
         totalPeriodos (int): total de períodos de separação de dados desejada;
@@ -231,7 +241,8 @@ def _calculaLinear( totalPeriodos: int ) -> float:
 
 # Função que calcula o valor do denominador na média ponderada exponencial de qualquer base. #
 def _calculaExponencial( totalPeriodos: int, base: float ) -> float:
-    """Calcula o valor do denominador do modelo de média exponencial;
+    """
+    Calcula o valor do denominador do modelo de média exponencial;
 
     Args:
         totalPeriodos (int): total de períodos de separação de dados desejada;
@@ -247,7 +258,8 @@ def _calculaExponencial( totalPeriodos: int, base: float ) -> float:
 
 # Função que calcula o valor do denominador na média simples. #
 def _calculaSimples( totalPeriodos: int ) -> int:
-    """Calcula o valor do denominador do modelo de média simples;
+    """
+    Calcula o valor do denominador do modelo de média simples;
 
     Args:
         totalPeriodos (int): total de períodos de separação de dados desejada;
@@ -264,7 +276,8 @@ def _calculaSimples( totalPeriodos: int ) -> int:
 
 # Função que preenche a matriz com uma base escolhida nas datas de compras que correspondem a determinado período. #
 def _preencheMatriz( matIdChurn: np.ndarray, datesVector: pd.DatetimeIndex, cdf: pd.DataFrame, base: float = 1 ) -> None:
-    """Preeche a matriz de clientes por períodos, marcando a coluna que corresponde ao período de uma transação realizada;
+    """
+    Preeche a matriz de clientes por períodos, marcando a coluna que corresponde ao período de uma transação realizada;
 
     Args:
         matIdChurn (np.ndarray):  matriz de clientes por períodos;
@@ -294,7 +307,8 @@ def _preencheMatriz( matIdChurn: np.ndarray, datesVector: pd.DatetimeIndex, cdf:
 
 # Função eu calcula o valor do Churn Binário de cada cliente e salva em um novo Dataframe. #
 def _calculaChurnBinario( dfIdChurn: pd.DataFrame, cdf: pd.DataFrame ) -> pd.DataFrame:
-    """Calcula o churn binário;
+    """
+    Calcula o churn binário;
 
     Args:
         dfIdChurn (pd.DataFrame): dataFrame com os valores da matriz preenchidos;
@@ -314,7 +328,8 @@ def _calculaChurnBinario( dfIdChurn: pd.DataFrame, cdf: pd.DataFrame ) -> pd.Dat
 
 # Função eu calcula o valor de qualquer Churn Ponderado de cada cliente e salva em um novo Dataframe.#
 def _calculaChurnInterno( dfIdChurn: pd.DataFrame, cdf: pd.DataFrame, valorMedia: float ) -> pd.DataFrame:
-    """ Calcula o churn de qualquer modelo, exceto o binário;
+    """ 
+    Calcula o churn de qualquer modelo, exceto o binário e o recente;
 
     Args:
         dfIdChurn (pd.DataFrame): dataFrame com os valores da matriz preenchidos;
@@ -338,7 +353,8 @@ def _calculaChurnInterno( dfIdChurn: pd.DataFrame, cdf: pd.DataFrame, valorMedia
 
 # Função eu calcula o valor do Churn Rencente de cada cliente e salva em um novo Dataframe.#
 def _calculaChurnInternoR( dfIdChurn: pd.DataFrame, cdf: pd.DataFrame, valorMedia: pd.Series ) -> pd.DataFrame:
-    """ Calcula o churn de qualquer modelo, exceto o binário;
+    """ 
+    Calcula o churn pelo modelo recente;
 
     Args:
         dfIdChurn (pd.DataFrame): dataFrame com os valores da matriz preenchidos;
@@ -361,7 +377,8 @@ def _calculaChurnInternoR( dfIdChurn: pd.DataFrame, cdf: pd.DataFrame, valorMedi
 
 # Função que calcula o churn com base em um arquivo de transação com qualquer um dos modelos disponíveis. #
 def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, base: float = 2 ) -> pd.DataFrame:
-    """Calcula a probabilidade de churn em qualquer modelo com base em um arquivo de transações;
+    """
+    Calcula a probabilidade de churn em qualquer modelo com base em um arquivo de transações;
 
     Args:
         arquivo (str): arquivo de transações;
