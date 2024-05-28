@@ -92,7 +92,7 @@ def calculaChurnMatrizTeste( matriz: np.ndarray, vetorReal: float ) -> pd.DataFr
     ########################### Modelo Simples ##########################################
     
     # Calcula o valor do denominador #
-    valorMedia = ax._calculaSimples( num_colunas + 1 )
+    valorMedia = num_colunas
     
     # Calcula churn #
     churn = ax._calculaChurnInterno( df, valorMedia )
@@ -114,7 +114,7 @@ def calculaChurnMatrizTeste( matriz: np.ndarray, vetorReal: float ) -> pd.DataFr
     df = pd.DataFrame( nova_matriz )
     
     # Calcula o valor do denominador #
-    valorMedia = ax._calculaLinear( num_colunas + 1 )
+    valorMedia = ax._calculaLinear( num_colunas )
     
     # Calcula churn #
     churn = ax._calculaChurnInterno( df, valorMedia )
@@ -136,7 +136,7 @@ def calculaChurnMatrizTeste( matriz: np.ndarray, vetorReal: float ) -> pd.DataFr
     df = pd.DataFrame( nova_matriz )
     
     # Calcula o valor do denominador #
-    valorMedia = ax._calculaExponencial( num_colunas + 1, 2 )
+    valorMedia = ax._calculaExponencial( num_colunas, 2 )
     
     # Calcula churn #
     churn = ax._calculaChurnInterno( df, valorMedia )
@@ -161,7 +161,7 @@ def calculaChurnMatrizTeste( matriz: np.ndarray, vetorReal: float ) -> pd.DataFr
     df = pd.DataFrame( nova_matriz )
     
     # Calcula o valor do denominador #
-    valorMedia = ax._calculaExponencial( num_colunas + 1, e )
+    valorMedia = ax._calculaExponencial( num_colunas, e )
     
     # Calcula churn #
     churn = ax._calculaChurnInterno( df, valorMedia )

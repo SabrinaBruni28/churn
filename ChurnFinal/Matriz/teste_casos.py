@@ -25,13 +25,8 @@ vetor_real = [1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0
 
 df = ax.calculaChurnMatrizTeste( matriz, vetor_real)
 
-ax.calculaChurnMatrizERRO(df)
+erro = ax.calculaChurnMatrizERRO(df)
 
-
-
-teste1 = ax.pd.read_csv( "churnComparacao.csv", sep="\s+")
-teste2 = ax.pd.read_csv( "churnERRO.csv", sep="\s+")
-
-print(teste1)
+print(df)
 print()
-print(teste2)
+print(erro)

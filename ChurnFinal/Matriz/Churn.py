@@ -9,24 +9,29 @@ import csv
 ###########################################         AUXILIARES        ################################################
 
 # Função que define os tipos de cada coluna, elimina as colunas desnecessárias e acrescenta colunas. #
-def _defineDataframe( cdf: pd.DataFrame ) -> None:
+def _defineDataframe( cdf: pd.DataFrame ) -> pd.DataFrame:
     """
-    Manipula o dataframe de transações adicionando, retirando e definindo os tipos das colunas;
+    Manipula o dataframe de transações escolhendo as colunas e definindo seus tipos;
 
     Args:
         cdf (pd.DataFrame): dataframe do arquivo de transações;
+    
+    Returns:
+        pd.DataFrame: retorna o novo dataframe;
     """
-    # Exclui colunas desnecessárias #
-    cdf.drop( ['categoria','valor'], axis = 1, inplace = True )
+    novocdf = pd.DataFrame()
     
-    # Define coluna de data como string #
-    cdf['char_date'] = cdf["char_date"].astype( str )
+    # Seleciona a coluna id dos clientes"
+    novocdf["id_cliente"] = cdf["id_cliente"]
     
-    # Cria uma nova coluna de data do tipo data #
-    cdf["date"] = pd.to_datetime( cdf["char_date"], format = "%Y%m%d" )
+    # Cria uma nova coluna de data como string #
+    novocdf["date"] = cdf["char_date"].astype( str )
     
-    # Define a coluna de data de string como uma string de data #
-    cdf["char_date"] = cdf["date"].dt.strftime( "%Y-%m-%d" )
+    # Define a coluna de data como tipo data #
+    novocdf["date"] = pd.to_datetime( novocdf["date"], format = "%Y%m%d" )
+    
+    
+    return novocdf
 
 # Função que calcula a quantidade de clientes no Dataframe. #
 def _totalClientes( cdf: pd.DataFrame ) -> int:
@@ -85,7 +90,7 @@ def _lerArquivo( arquivo: str ) -> pd.DataFrame:
     cdf = pd.read_csv( arquivo, sep="\s+", names=nomes_colunas )
     
     # Define o formado do dataframe #
-    _defineDataframe( cdf )
+    cdf = _defineDataframe( cdf )
 
     # Retorna o dataframe do arquivo #
     return cdf

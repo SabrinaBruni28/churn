@@ -4,29 +4,35 @@
 
 import pandas as pd
 import numpy as np
+import dateutil.parser as dtp
 import csv
 
 ###########################################         AUXILIARES        ################################################
 
-# Função que define os tipos de cada coluna, elimina as colunas desnecessárias e acrescenta colunas. #
-def _defineDataframe( cdf: pd.DataFrame ) -> None:
+# Função que define as colunas importantes e seu tipo para o cálculo. #
+def _defineDataframe( cdf: pd.DataFrame ) -> pd.DataFrame:
     """
-    Manipula o dataframe de transações adicionando, retirando e definindo os tipos das colunas;
+    Manipula o dataframe de transações escolhendo as colunas e definindo seus tipos;
 
     Args:
         cdf (pd.DataFrame): dataframe do arquivo de transações;
+    
+    Returns:
+        pd.DataFrame: retorna o novo dataframe;
     """
-    # Exclui colunas desnecessárias #
-    cdf.drop( ['categoria','valor'], axis = 1, inplace = True )
+    novocdf = pd.DataFrame()
     
-    # Define coluna de data como string #
-    cdf['char_date'] = cdf["char_date"].astype( str )
+    # Seleciona a coluna id dos clientes"
+    novocdf["id_cliente"] = cdf["id_cliente"]
     
-    # Cria uma nova coluna de data do tipo data #
-    cdf["date"] = pd.to_datetime( cdf["char_date"], format = "%Y%m%d" )
+    # Cria uma nova coluna de data como string #
+    novocdf["date"] = cdf["char_date"].astype( str )
     
-    # Define a coluna de data de string como uma string de data #
-    cdf["char_date"] = cdf["date"].dt.strftime( "%Y-%m-%d" )
+    # Define a coluna de data como tipo data #
+    novocdf["date"] = pd.to_datetime( novocdf["date"], format = "%Y%m%d" )
+    
+    
+    return novocdf
 
 ######################################################################################################################
 
@@ -50,7 +56,7 @@ def _lerArquivo( arquivo: str ) -> pd.DataFrame:
     cdf = pd.read_csv( arquivo, sep="\s+", names=nomes_colunas )
     
     # Define o formado do dataframe #
-    _defineDataframe( cdf )
+    cdf = _defineDataframe( cdf )
 
     # Retorna o dataframe do arquivo #
     return cdf
@@ -72,20 +78,26 @@ def _salvaArquivo( churn: pd.DataFrame, nomeArquivo: str ) -> None:
 #########################################         CONSTRUTORES        ################################################
 
 # Função que controi o vetor de datas de inicio de cada período. #
-def _controiVetorDatas( cdf: pd.DataFrame, totalPeriodos: int ) -> pd.DatetimeIndex:
+def _controiVetorDatas( cdf: pd.DataFrame, frequencia: str, dataInicial: str, dataFinal: str ) -> pd.DatetimeIndex:
     """
-    Constroi um vetor de datas de períodos com base em um intervalo de transações e quantidade de períodos desejados;
+    Constroi um vetor de datas de períodos com base em um intervalo de de datas e uma frequência;
 
     Args:
         cdf (pd.DataFrame): dataframe do arquivo de transações;
-        totalPeriodos (int): total de períodos de separação de dados desejada;
+        frequencia (str): tamanho entre o períodos (D, W, M, ou Y)
+        dataInicial (str): data de inicio da avaliação;
+        dataFinal (str): data final da avaliação;
 
     Returns:
         pd.DatetimeIndex: retorna um vetor de datas;
     """
+    # Convertendo as datas inicial e final para o formato padrão #
+    dataInicial = dtp.parse(dataInicial)
+    dataFinal = dtp.parse(dataFinal)
     
+    print(dataInicial, dataFinal)
     # Cria uma vetor de datas com base no intervalo da maior e da menor data do arquivo de transações e na quantidade de períodos escolhida #
-    dates_vector = pd.date_range( start = min( cdf["date"] ), end = max( cdf["date"] ), periods = totalPeriodos )
+    dates_vector = pd.date_range( start = dataInicial, end = dataFinal, freq = frequencia )
     
     # Salva a última data # 
     last_date = dates_vector[-1]
@@ -96,6 +108,7 @@ def _controiVetorDatas( cdf: pd.DataFrame, totalPeriodos: int ) -> pd.DatetimeIn
     # Substitui a última data do vetor pela data somada com um dia, para que a última data esteja incluída no intervalo #
     dates_vector = dates_vector[:-1].append( pd.DatetimeIndex( [last_date] ) )
 
+    print(dates_vector)
     # Retorna oo vetor de datas #
     return dates_vector
 
@@ -182,7 +195,7 @@ def _calculaLinear( totalPeriodos: int ) -> float:
     Calcula o valor do denominador do modelo de média linear;
 
     Args:
-        totalPeriodos (int): total de períodos de separação de dados desejada;
+        totalPeriodos (int): total de períodos de separação das datas;
 
     Returns:
         float: retorna o valor do denominador para o cálculo da média linear para todos os clientes;
@@ -190,7 +203,7 @@ def _calculaLinear( totalPeriodos: int ) -> float:
     
     # PA
     # Sn = n( a1 + an ) / 2
-    return ( totalPeriodos - 1 ) * ( totalPeriodos ) / 2.0
+    return ( totalPeriodos ) * ( 1 + totalPeriodos ) / 2.0
 
 # Função que calcula o valor do denominador na média ponderada exponencial de qualquer base. #
 def _calculaExponencial( totalPeriodos: int, base: float ) -> float:
@@ -207,21 +220,8 @@ def _calculaExponencial( totalPeriodos: int, base: float ) -> float:
     
     # PG
     # Sn = a1( q**n - 1 ) / (q - 1)
-    return ( base ) * ( base ** ( totalPeriodos-1 ) - 1 ) / ( base - 1 )
+    return ( base ) * ( base ** ( totalPeriodos ) - 1 ) / ( base - 1 )
 
-# Função que calcula o valor do denominador na média simples. #
-def _calculaSimples( totalPeriodos: int ) -> int:
-    """
-    Calcula o valor do denominador do modelo de média simples;
-
-    Args:
-        totalPeriodos (int): total de períodos de separação de dados desejada;
-
-    Returns:
-        int: retorna o valor do denominador para o cálculo da média simples para todos os clientes;
-    """
-    
-    return totalPeriodos - 1
 
 ######################################################################################################################
 
@@ -282,7 +282,7 @@ def _calculaChurnBinario( tabela: pd.DataFrame ) -> pd.DataFrame:
 # Função eu calcula o valor de qualquer Churn Ponderado de cada cliente e salva em um novo Dataframe.#
 def _calculaChurnInterno( tabela: pd.DataFrame, valorMedia: float ) -> pd.DataFrame:
     """
-    Calcula o churn de qualquer modelo, exceto o binárioe o recente;
+    Calcula o churn de qualquer modelo, exceto o binário e o recente;
 
     Args:
         tabela (pd.DataFrame): dataFrame de clientes por períodos;
@@ -326,25 +326,25 @@ def _calculaChurnInternoR( tabela: pd.DataFrame ) -> pd.DataFrame:
 
 
 # Função que calcula o churn com base em um arquivo de transação com qualquer um dos modelos disponíveis. #
-def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, base: float = 2 ) -> pd.DataFrame:
+def calculaChurn( arquivo: str, dataInicial: str, dataFinal: str, freq: str = "M", base: float = 2, modelo: str = "simples" ) -> pd.DataFrame:
     """
     Calcula a probabilidade de churn em qualquer modelo com base em um arquivo de transações;
 
     Args:
         arquivo (str): arquivo de transações;
+        dataInicial (str): data inicial para os períodos;
+        dataFinal (str): data final para os períodos;
+        freq (str): tamanho de cada período de intervalo;
+        (Defaults to M);
+        base (float, optional): base desejada para o cálculo exponencial;
+        (Preencher com valores maiores que 1);
+        (Defaults to 2);
         modelo (str, optional): nome do modelo desejado;
             modelo= "binario";
             modelo= "simples" (Defaults);
             modelo= "linear";
             modelo= "exponencial";
             modelo= "recente";
-        periodos (int, optional): total de períodos de separação de dados desejada 
-        (Preencher com valores maiores que 1);
-        (Defaults to 10);
-        
-        base (float, optional): base desejada para o cálculo exponencial;
-        (Preencher com valores maiores que 1);
-        (Defaults to 2);
 
     Returns:
         pd.DataFrame: retorna o dataFrame resultante do churn calculado;
@@ -354,12 +354,14 @@ def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, bas
     cdf = _lerArquivo( arquivo )
 
     # Construção do vetor de data inicial de cada período #
-    dataVector = _controiVetorDatas( cdf, periodos )
+    dataVector = _controiVetorDatas( cdf, freq, dataInicial, dataFinal )
 
     # Constroi a tabela de clientes por período #
     tabela = _constroiTabelaClientePorPeriodo(cdf, dataVector)
     
     cdf.set_index("id_cliente", inplace=True)
+    
+    totalPeriodos = tabela.shape[1]
 
     ###################### Caso o modelo seja o Binário #############################
     if ( modelo == "binario" ):
@@ -378,7 +380,7 @@ def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, bas
         cdf.apply( _preencheTabela, args=( tabela, dataVector, 1 ), axis=1 )
         
         # Calcula o valor do denominador #
-        valorMedia = _calculaSimples( periodos )
+        valorMedia = totalPeriodos
         
         # Calcula o churn #
         churn = _calculaChurnInterno( tabela, valorMedia )
@@ -392,7 +394,7 @@ def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, bas
         cdf.apply( _preencheTabela, args=( tabela, dataVector, 0 ), axis=1 )
         
         # Calcula o valor do denominador #
-        valorMedia = _calculaLinear( periodos )
+        valorMedia = _calculaLinear( totalPeriodos )
         
         # Calcula o churn #
         churn = _calculaChurnInterno( tabela, valorMedia )
@@ -406,7 +408,7 @@ def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, bas
         cdf.apply( _preencheTabela, args=( tabela, dataVector, base ), axis=1 )
         
         # Calcula o valor do denominador #
-        valorMedia = _calculaExponencial( periodos, base )
+        valorMedia = _calculaExponencial( totalPeriodos, base )
         
         # Calcula o churn #
         churn = _calculaChurnInterno( tabela, valorMedia )
@@ -437,5 +439,158 @@ def calculaChurn( arquivo: str, modelo: str = "simples", periodos: int = 10, bas
 
     # Retorna o dataframe resultante #
     return churn
+
+
+# Função que calcula o churn com base em um arquivo de transação com qualquer um dos modelos disponíveis. #
+def calculaAllChurn( arquivo: str, dataInicial: str, dataFinal: str, freq: str = "M" ) -> pd.DataFrame:
+    """
+    Calcula a probabilidade de churn de clientes com base em um arquivo de transações e períodos;
+
+    Args:
+        arquivo (str): arquivo de transações;
+        dataInicial (str): data inicial para os períodos;
+        dataFinal (str): data final para os períodos;
+        freq (str): tamanho de cada período de intervalo;
+        (Defaults to M);
+
+    Returns:
+        pd.DataFrame: retorna a probabilidade de churn de todos os modelos;
+    """
+    
+    # Leitura do DataFrame de transação #
+    cdf = _lerArquivo( arquivo )
+
+    # Construção do vetor de data inicial de cada período #
+    dataVector = _controiVetorDatas( cdf, freq, dataInicial, dataFinal )
+
+    # Constroi a tabela de clientes por período #
+    tabela = _constroiTabelaClientePorPeriodo(cdf, dataVector)
+    
+    cdf.set_index("id_cliente", inplace=True)
+    
+    totalPeriodos = tabela.shape[1]
+
+    # Preenche a tabela #
+    cdf.apply( _preencheTabela, args=( tabela, dataVector, 1 ), axis=1 )
+
+    ########################### Modelo Binário ##########################################
+    
+    # Calcula churn #
+    churn = _calculaChurnBinario( tabela )
+    
+    # Renomeia a coluna de churn para o nome do modelo #
+    resultadoChurn = churn
+    resultadoChurn.rename( columns = { 'churn': "churnBinario" }, inplace = True )
+    
+    ####################################################################################
+
+    ########################### Modelo Simples ##########################################
+    
+    # Calcula o valor do denominador #
+    valorMedia = totalPeriodos
+    
+    # Calcula churn #
+    churn = _calculaChurnInterno( tabela, valorMedia )
+    
+    # Faz um merge do dataframe até então com o dataframe de churn calculado com base no id #
+    resultadoChurn = pd.merge( resultadoChurn, churn, on = "id" )
+    
+    # Renomeia a coluna de churn para o nome do modelo #
+    resultadoChurn.rename( columns = { 'churn': "churnSimples" }, inplace = True )
+    
+    ####################################################################################
+
+    ########################### Modelo Linear ###########################################
+    
+    # Criando as ponderações lineares #
+    multiplicadores = pd.Series([i + 1 for i in range(len(tabela.columns))], index=tabela.columns)
+    
+    # Criando a tabela linear #
+    novaTabela = tabela * multiplicadores
+    
+    # Calcula o valor do denominador #
+    valorMedia = _calculaLinear( totalPeriodos )
+    
+    # Calcula churn #
+    churn = _calculaChurnInterno( novaTabela, valorMedia )
+    
+    # Faz um merge do dataframe até então com o dataframe de churn calculado com base no id #
+    resultadoChurn = pd.merge( resultadoChurn, churn, on = "id" )
+    
+    # Renomeia a coluna de churn para o nome do modelo #
+    resultadoChurn.rename(columns = { 'churn': "churnLinear" }, inplace = True )
+    
+    ####################################################################################
+
+    ####################### Modelo exponencial de base 2 ################################
+    
+    # Criando as ponderações lineares #
+    multiplicadores = pd.Series([2**(i + 1) for i in range(len(tabela.columns))], index=tabela.columns)
+    
+    # Criando a tabela linear #
+    novaTabela = tabela * multiplicadores
+    
+    # Calcula o valor do denominador #
+    valorMedia = _calculaExponencial( totalPeriodos, 2 )
+    
+    # Calcula churn #
+    churn = _calculaChurnInterno( novaTabela, valorMedia )
+    
+    # Faz um merge do dataframe até então com o dataframe de churn calculado com base no id #
+    resultadoChurn = pd.merge( resultadoChurn, churn, on = "id" )
+    
+    # Renomeia a coluna de churn para o nome do modelo #
+    resultadoChurn.rename(columns = { 'churn': "churnExponencial_2" }, inplace = True )
+    
+    ####################################################################################
+
+    ####################### Modelo exponencial de base e ################################
+    
+    e = np.e
+    
+    # Criando as ponderações lineares #
+    multiplicadores = pd.Series([e**(i + 1) for i in range(len(tabela.columns))], index=tabela.columns)
+    
+    # Criando a tabela linear #
+    novaTabela = tabela * multiplicadores
+    
+    # Calcula o valor do denominador #
+    valorMedia = _calculaExponencial( totalPeriodos, e )
+    
+    # Calcula churn #
+    churn = _calculaChurnInterno( novaTabela, valorMedia )
+    
+    # Faz um merge do dataframe até então com o dataframe de churn calculado com base no id #
+    resultadoChurn = pd.merge( resultadoChurn, churn, on = "id" )
+    
+    # Renomeia a coluna de churn para o nome do modelo #
+    resultadoChurn.rename( columns = { 'churn': "churnExponencial_e" }, inplace = True )
+    
+    ####################################################################################
+    
+    ########################## Modelo Rencente ##########################################
+    
+    # Cria uma coluna de valor do denominador da média para cada cliente preenchida com zero #
+    tabela["Dmedia"] = 0
+    
+    # Calcula o valor do denominador #
+    tabela.apply(_calculaRecenciaCliente, axis=1)
+    
+    # Calcula churn #
+    churn = _calculaChurnInternoR( tabela )
+    
+    # Faz um merge do dataframe até então com o dataframe de churn calculado com base no id #
+    resultadoChurn = pd.merge( resultadoChurn, churn, on = "id" )
+    
+    # Renomeia a coluna de churn para o nome do modelo #
+    resultadoChurn.rename( columns = { 'churn': "churnRecente" }, inplace = True )
+    
+    ####################################################################################
+
+   # Salva o dataframe em um arquivo CSV #
+    _salvaArquivo( resultadoChurn, "churnResultado.csv" )
+    
+    # Retorna o dataframe #
+    return resultadoChurn
 
 ######################################################################################################################
