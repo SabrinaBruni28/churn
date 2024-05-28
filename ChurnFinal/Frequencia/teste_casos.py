@@ -1,8 +1,6 @@
-import CasosTeste as ax
+import CasosTeste as c
 
-e = ax.np.e
-
-matriz = ax.np.array( [
+matriz = c.np.array( [
             [1 ,0, 0, 0],
             [0, 1, 0, 0],
             [0, 0, 1, 0],
@@ -23,9 +21,9 @@ matriz = ax.np.array( [
 
 vetor_real = [1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
 
-df = ax.calculaChurnMatrizTeste( matriz, vetor_real)
+df = c.calculaChurnMatrizTeste( matriz, vetor_real)
 
-erro = ax.calculaChurnMatrizERRO(df)
+erro = c.calculaChurnMatrizERRO(df)
 
 print(df)
 print()

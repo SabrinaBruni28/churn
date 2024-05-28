@@ -53,9 +53,12 @@ def calculaChurnMatrizTeste( matriz: np.ndarray, vetorReal: float ) -> pd.DataFr
 
     Args:
         matriz (float): matriz de teste com marcações de compras ou não em cada período;
-        (Deve-se possuir pelo menos 2 colunas e pelo menos 1 linha);
+        
+            --> (Deve-se possuir pelo menos 2 colunas e pelo menos 1 linha);
+            
         vetorReal (float): vetor com os valores reais de churn;
-        (Deve-se possuir a mesma quantidade de colunas que a matriz possui de linhas);
+        
+            --> (Deve-se possuir a mesma quantidade de colunas que a matriz possui de linhas);
 
     Returns:
         pd.DataFrame: retorna o dataframe resultante com os valores de churn de cada modelo;

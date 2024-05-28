@@ -3,8 +3,8 @@
 #############################       Autor(a): Sabrina Bruni de Souza Faria      ######################################
 
 import pandas as pd
-import numpy as np
-import dateutil.parser as dtp
+from numpy import e
+from dateutil.parser import parse
 import csv
 
 ###########################################         AUXILIARES        ################################################
@@ -84,31 +84,32 @@ def _controiVetorDatas( cdf: pd.DataFrame, frequencia: str, dataInicial: str, da
 
     Args:
         cdf (pd.DataFrame): dataframe do arquivo de transações;
-        frequencia (str): tamanho entre o períodos (D, W, M, ou Y)
+        frequencia (str): tamanho entre o períodos (H, D, W, M, ou Y);
         dataInicial (str): data de inicio da avaliação;
         dataFinal (str): data final da avaliação;
 
     Returns:
         pd.DatetimeIndex: retorna um vetor de datas;
     """
-    # Convertendo as datas inicial e final para o formato padrão #
-    dataInicial = dtp.parse(dataInicial)
-    dataFinal = dtp.parse(dataFinal)
+    # Caso não seja passada uma data inicial #
+    if dataInicial == None:
+        dataInicial = min( cdf["date"] )
+        
+    # Convertendo a data inicial passada para o formato padrão reconhecido #
+    else:  
+        dataInicial = parse(dataInicial)
+        
+    # Caso não seja passada uma data inicial #
+    if dataFinal == None:
+        dataFinal = max( cdf["date"] ) + pd.DateOffset( days = 1 ) # Somado um dia na data final #
+        
+    # Convertendo a data final passada para o formato padrão reconhecido #
+    else:
+        dataFinal = parse(dataFinal) + pd.DateOffset( days = 1 ) # Somado um dia na data final #
     
-    print(dataInicial, dataFinal)
-    # Cria uma vetor de datas com base no intervalo da maior e da menor data do arquivo de transações e na quantidade de períodos escolhida #
+    # Cria uma vetor de datas com base me uma data inicial, uma data final e na frequência escolhida #
     dates_vector = pd.date_range( start = dataInicial, end = dataFinal, freq = frequencia )
     
-    # Salva a última data # 
-    last_date = dates_vector[-1]
-    
-    # Soma um dia na última data #
-    last_date = last_date + pd.DateOffset( days = 1 )
-    
-    # Substitui a última data do vetor pela data somada com um dia, para que a última data esteja incluída no intervalo #
-    dates_vector = dates_vector[:-1].append( pd.DatetimeIndex( [last_date] ) )
-
-    print(dates_vector)
     # Retorna oo vetor de datas #
     return dates_vector
 
@@ -236,10 +237,14 @@ def _preencheTabela( row: pd.Series, tabela: pd.DataFrame, datesVector: pd.Datet
         row (pd.Series): linha do data frame de transações;
         tabela (pd.DataFrame): tabela de clientes por período a ser preenchida;
         datesVector (pd.DatetimeIndex): vetor das datas dos períodos;
-        base (float, optional): base usada para preencher a matriz.
-            0 -> para preencher linear;
-            1 -> para preencher com 1 independente da coluna (Defaults);
-            n -> [!= 1 e != 0] para preencher exponencialmente com a base n e com o expoente linear;
+        
+        base (float, optional): base usada para preencher a matriz;
+        
+            --> 0 - para preencher linear;
+            
+            --> 1 - para preencher com 1 independente da coluna (Defaults);
+            
+            --> n - [!= 1 e != 0] para preencher exponencialmente com a base n e com o expoente linear;
     
     """
     
@@ -326,25 +331,53 @@ def _calculaChurnInternoR( tabela: pd.DataFrame ) -> pd.DataFrame:
 
 
 # Função que calcula o churn com base em um arquivo de transação com qualquer um dos modelos disponíveis. #
-def calculaChurn( arquivo: str, dataInicial: str, dataFinal: str, freq: str = "M", base: float = 2, modelo: str = "simples" ) -> pd.DataFrame:
+def calculaChurn( arquivo: str, dataInicial: str = None, dataFinal: str = None, freq: str = "M", base: float = 2, modelo: str = "simples" ) -> pd.DataFrame:
     """
     Calcula a probabilidade de churn em qualquer modelo com base em um arquivo de transações;
 
     Args:
         arquivo (str): arquivo de transações;
+        
         dataInicial (str): data inicial para os períodos;
         dataFinal (str): data final para os períodos;
+        
+            --> (As datas podem ser passadas com qualquer separador conhecido entre datas e em qualquer ordem);
+            
+            --> (É mais aconselhável o modelo MM/DD/YYYY para que não ocorra confusão entre o dia e o mês, pois por padrão é reconhecido o mês primeiro);
+            
+            --> (Defaults to None) - É utilizado a data inicial ou a final do próprio dataset de transações;
+        
         freq (str): tamanho de cada período de intervalo;
-        (Defaults to M);
+        
+            --> (A frequência é passada como uma letra);
+            
+            --> (H - hora, D - day, W - week, M - month, Y - year);
+            
+            --> (É possível passar uma quantidade em cada tipo adicionando um número antes da letra);
+            
+            --> (Por padrão a data inicial é ajustada para o final do mês, final do ano ou da semana);
+            
+            --> (Para mudar para ser ajustado para o começo do mês ou do ano, adicione um "S" após a letra da frequência);
+            
+            --> (Defaults to M);
+
         base (float, optional): base desejada para o cálculo exponencial;
-        (Preencher com valores maiores que 1);
-        (Defaults to 2);
+        
+            --> (Preencher com valores maiores que 1);
+            
+            --> (Defaults to 2);
+            
         modelo (str, optional): nome do modelo desejado;
-            modelo= "binario";
-            modelo= "simples" (Defaults);
-            modelo= "linear";
-            modelo= "exponencial";
-            modelo= "recente";
+        
+            --> modelo= "binario";
+            
+            --> modelo= "simples" (Defaults);
+            
+            --> modelo= "linear";
+            
+            --> modelo= "exponencial";
+            
+            --> modelo= "recente";
 
     Returns:
         pd.DataFrame: retorna o dataFrame resultante do churn calculado;
@@ -442,16 +475,35 @@ def calculaChurn( arquivo: str, dataInicial: str, dataFinal: str, freq: str = "M
 
 
 # Função que calcula o churn com base em um arquivo de transação com qualquer um dos modelos disponíveis. #
-def calculaAllChurn( arquivo: str, dataInicial: str, dataFinal: str, freq: str = "M" ) -> pd.DataFrame:
+def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = None, freq: str = "M" ) -> pd.DataFrame:
     """
-    Calcula a probabilidade de churn de clientes com base em um arquivo de transações e períodos;
+    Calcula a probabilidade de churn de clientes de TODOS os modelos com base em um arquivo de transações e períodos;
 
     Args:
         arquivo (str): arquivo de transações;
+        
         dataInicial (str): data inicial para os períodos;
         dataFinal (str): data final para os períodos;
+        
+            --> (As datas podem ser passadas com qualquer separador conhecido entre datas e em qualquer ordem);
+            
+            --> (É mais aconselhável o modelo MM/DD/YYYY para que não ocorra confusão entre o dia e o mês, pois por padrão é reconhecido o mês primeiro);
+            
+            --> (Defaults to None) - É utilizado a data inicial ou a final do próprio dataset de transações;
+        
         freq (str): tamanho de cada período de intervalo;
-        (Defaults to M);
+        
+            --> (A frequência é passada como uma letra);
+            
+            --> (H - hora, D - day, W - week, M - month, Y - year);
+            
+            --> (É possível passar uma quantidade em cada tipo adicionando um número antes da letra);
+            
+            --> (Por padrão a data inicial é ajustada para o final do mês, final do ano ou da semana);
+            
+            --> (Para mudar para ser ajustado para o começo do mês ou do ano, adicione um "S" após a letra da frequência);
+            
+            --> (Defaults to M);
 
     Returns:
         pd.DataFrame: retorna a probabilidade de churn de todos os modelos;
@@ -545,8 +597,6 @@ def calculaAllChurn( arquivo: str, dataInicial: str, dataFinal: str, freq: str =
     ####################################################################################
 
     ####################### Modelo exponencial de base e ################################
-    
-    e = np.e
     
     # Criando as ponderações lineares #
     multiplicadores = pd.Series([e**(i + 1) for i in range(len(tabela.columns))], index=tabela.columns)
