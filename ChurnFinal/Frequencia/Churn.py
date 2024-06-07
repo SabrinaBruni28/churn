@@ -29,8 +29,9 @@ def _defineDataframe( cdf: pd.DataFrame ) -> pd.DataFrame:
     novocdf["date"] = cdf["char_date"].astype( str )
     
     # Define a coluna de data como tipo data #
-    novocdf["date"] = pd.to_datetime( novocdf["date"], format = "%Y%m%d" )
+    novocdf["date"] = pd.to_datetime( novocdf["date"], format = "%Y-%m-%d" )
     
+    print(novocdf)
     
     return novocdf
 
@@ -53,7 +54,10 @@ def _lerArquivo( arquivo: str ) -> pd.DataFrame:
     nomes_colunas = ["id_cliente", "char_date", "categoria", "valor"]
     
     # Cria um dataframe do arquivo com as colunas renomeadas #
-    cdf = pd.read_csv( arquivo, sep="\s+", names=nomes_colunas )
+    #cdf = pd.read_csv( arquivo, sep="\s+", header=0 )
+    cdf = pd.read_csv( arquivo, header=0 )
+    cdf.columns = nomes_colunas
+    print(cdf)
     
     # Define o formado do dataframe #
     cdf = _defineDataframe( cdf )
@@ -388,7 +392,7 @@ def calculaChurn( arquivo: str, dataInicial: str = None, dataFinal: str = None, 
 
     # Construção do vetor de data inicial de cada período #
     dataVector = _controiVetorDatas( cdf, freq, dataInicial, dataFinal )
-
+    print(dataVector)
     # Constroi a tabela de clientes por período #
     tabela = _constroiTabelaClientePorPeriodo(cdf, dataVector)
     
@@ -521,7 +525,7 @@ def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = Non
     cdf.set_index("id_cliente", inplace=True)
     
     totalPeriodos = tabela.shape[1]
-
+    print("períodos: ", totalPeriodos)
     # Preenche a tabela #
     cdf.apply( _preencheTabela, args=( tabela, dataVector, 1 ), axis=1 )
 
