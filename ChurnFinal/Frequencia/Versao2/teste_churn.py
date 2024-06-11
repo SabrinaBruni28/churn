@@ -2,5 +2,5 @@ import Churn as c
 
 e = c.e
 
-teste = c.calculaChurn( arquivo="../CDNOW_master.txt", freq="M", modelo="recente" )
+teste = c.calculaAllChurn( arquivo="../CDNOW_master.txt", freq="w" )
 print(teste)

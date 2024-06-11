@@ -241,11 +241,9 @@ def _transformaTabela( row: pd.Series, base: float = 0 ) -> pd.Series:
     # Faz uma cópia dos dados antes de modificar
     row_copy = row.copy()
     row_copy[inicial:-1] *= multiplicadores
+    
+    return row_copy
 
-    # Atribui os valores modificados de volta à row original
-    row[inicial:-1] = row_copy[inicial:-1]
-    print(row)
-    return row
 # Função que preenche a tabela com uma base escolhida nas datas de compras que correspondem a determinado período. #
 def _preencheTabela( row: pd.Series, tabela: pd.DataFrame, datesVector: pd.DatetimeIndex, base: float = 1 ) -> None:
     """
@@ -402,34 +400,29 @@ def calculaChurn( arquivo: str, dataInicial: str = None, dataFinal: str = None, 
 
     # Construção do vetor de data inicial de cada período #
     dataVector = _controiVetorDatas( cdf, freq, dataInicial, dataFinal )
-    print(dataVector)
+
     # Constroi a tabela de clientes por período #
     tabela = _constroiTabelaClientePorPeriodo(cdf, dataVector)
     
     cdf.set_index("id_cliente", inplace=True)
-    
-    #totalPeriodos = tabela.shape[1]
 
     # Preenche a tabela #
     cdf.apply( _preencheTabela, args=( tabela, dataVector, 1 ), axis=1 )
-    print(tabela)
 
     # Cria uma coluna de valor do denominador da média para cada cliente preenchida com zero #
     tabela["Dmedia"] = 0
-    print(tabela)
     
     # Calcula a quantidade de períodos #
     tabela.apply( _calculaRecenciaCliente, axis=1 )
-    print(tabela)
     
     ##################### Caso o modelo seja o Linear #############################
     if( modelo == "linear" ):
         # Multiplica a tabela pela sua ponderação #
         tabela = tabela.apply( lambda row: _transformaTabela( row ), axis=1 )
-        print(tabela)
+
         # Calcula o valor do denominador #
         tabela["Dmedia"] = tabela["Dmedia"].apply( _calculaLinear )
-        print(tabela)
+        
         # Calcula o churn #
         churn = _calculaChurnInternoR( tabela )
         
@@ -440,10 +433,10 @@ def calculaChurn( arquivo: str, dataInicial: str = None, dataFinal: str = None, 
     elif ( modelo == "exponencial" ):
         # Multiplica a tabela pela sua ponderação #
         tabela = tabela.apply(lambda row: _transformaTabela( row, base ), axis=1)
-        print(tabela)
+        
         # Calcula o valor do denominador #
         tabela["Dmedia"] = tabela["Dmedia"].apply( _calculaExponencial, args=(base,))
-        print(tabela)
+        
         # Calcula o churn #
         churn = _calculaChurnInternoR( tabela )
         
@@ -513,73 +506,50 @@ def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = Non
     cdf.set_index("id_cliente", inplace=True)
     
     totalPeriodos = tabela.shape[1]
-    print("períodos: ", totalPeriodos)
+
     # Preenche a tabela #
     cdf.apply( _preencheTabela, args=( tabela, dataVector, 1 ), axis=1 )
 
-    ########################### Modelo Binário ##########################################
+    # Cria uma coluna de valor do denominador da média para cada cliente preenchida com zero #
+    tabela["Dmedia"] = 0
+    print(tabela)
     
-    # Calcula churn #
-    churn = _calculaChurnBinario( tabela )
-    
-    # Renomeia a coluna de churn para o nome do modelo #
-    resultadoChurn = churn
-    resultadoChurn.rename( columns = { 'churn': "churnBinario" }, inplace = True )
-    
-    ####################################################################################
+    # Calcula a quantidade de períodos #
+    tabela.apply( _calculaRecenciaCliente, axis=1 )
 
-    ########################### Modelo Simples ##########################################
-    
-    # Calcula o valor do denominador #
-    valorMedia = totalPeriodos
-    
-    # Calcula churn #
-    churn = _calculaChurnInterno( tabela, valorMedia )
-    
-    # Faz um merge do dataframe até então com o dataframe de churn calculado com base no id #
-    resultadoChurn = pd.merge( resultadoChurn, churn, on = "id" )
-    
-    # Renomeia a coluna de churn para o nome do modelo #
-    resultadoChurn.rename( columns = { 'churn': "churnSimples" }, inplace = True )
-    
-    ####################################################################################
-
+    print("Linear")
+    print(tabela)
     ########################### Modelo Linear ###########################################
     
-    # Criando as ponderações lineares #
-    multiplicadores = pd.Series([i + 1 for i in range(len(tabela.columns))], index=tabela.columns)
-    
-    # Criando a tabela linear #
-    novaTabela = tabela * multiplicadores
-    
+    # Multiplica a tabela pela sua ponderação #
+    tabelaNova = tabela.apply( lambda row: _transformaTabela( row ), axis=1 )
+    print(tabelaNova)
     # Calcula o valor do denominador #
-    valorMedia = _calculaLinear( totalPeriodos )
-    
-    # Calcula churn #
-    churn = _calculaChurnInterno( novaTabela, valorMedia )
+    tabelaNova["Dmedia"] = tabelaNova["Dmedia"].apply( _calculaLinear )
+    print(tabelaNova)
+    # Calcula o churn #
+    churn = _calculaChurnInternoR( tabelaNova )
     
     # Faz um merge do dataframe até então com o dataframe de churn calculado com base no id #
-    resultadoChurn = pd.merge( resultadoChurn, churn, on = "id" )
-    
+    resultadoChurn = churn
+    print(churn)
     # Renomeia a coluna de churn para o nome do modelo #
     resultadoChurn.rename(columns = { 'churn': "churnLinear" }, inplace = True )
     
     ####################################################################################
-
+    print("Exponencial base 2")
+    print(tabela)
     ####################### Modelo exponencial de base 2 ################################
     
-    # Criando as ponderações lineares #
-    multiplicadores = pd.Series([2**(i + 1) for i in range(len(tabela.columns))], index=tabela.columns)
-    
-    # Criando a tabela linear #
-    novaTabela = tabela * multiplicadores
-    
+    # Multiplica a tabela pela sua ponderação #
+    tabelaNova = tabela.apply(lambda row: _transformaTabela( row, 2 ), axis=1)
+    print(tabelaNova)
     # Calcula o valor do denominador #
-    valorMedia = _calculaExponencial( totalPeriodos, 2 )
-    
-    # Calcula churn #
-    churn = _calculaChurnInterno( novaTabela, valorMedia )
-    
+    tabelaNova["Dmedia"] = tabelaNova["Dmedia"].apply( _calculaExponencial, args=(2,))
+    print(tabelaNova)
+    # Calcula o churn #
+    churn = _calculaChurnInternoR( tabelaNova )
+    print(churn)
     # Faz um merge do dataframe até então com o dataframe de churn calculado com base no id #
     resultadoChurn = pd.merge( resultadoChurn, churn, on = "id" )
     
@@ -587,21 +557,19 @@ def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = Non
     resultadoChurn.rename(columns = { 'churn': "churnExponencial_2" }, inplace = True )
     
     ####################################################################################
-
+    print("Exponencial base e")
+    print(tabela)
     ####################### Modelo exponencial de base e ################################
     
-    # Criando as ponderações lineares #
-    multiplicadores = pd.Series([e**(i + 1) for i in range(len(tabela.columns))], index=tabela.columns)
-    
-    # Criando a tabela linear #
-    novaTabela = tabela * multiplicadores
-    
+    # Multiplica a tabela pela sua ponderação #
+    tabelaNova = tabela.apply(lambda row: _transformaTabela( row, e ), axis=1)
+    print(tabelaNova)
     # Calcula o valor do denominador #
-    valorMedia = _calculaExponencial( totalPeriodos, e )
-    
-    # Calcula churn #
-    churn = _calculaChurnInterno( novaTabela, valorMedia )
-    
+    tabelaNova["Dmedia"] = tabelaNova["Dmedia"].apply( _calculaExponencial, args=(e,))
+    print(tabelaNova)
+    # Calcula o churn #
+    churn = _calculaChurnInternoR( tabelaNova )
+    print(churn)
     # Faz um merge do dataframe até então com o dataframe de churn calculado com base no id #
     resultadoChurn = pd.merge( resultadoChurn, churn, on = "id" )
     
@@ -609,18 +577,13 @@ def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = Non
     resultadoChurn.rename( columns = { 'churn': "churnExponencial_e" }, inplace = True )
     
     ####################################################################################
-    
+    print("Recente")
+    print(tabela)
     ########################## Modelo Rencente ##########################################
-    
-    # Cria uma coluna de valor do denominador da média para cada cliente preenchida com zero #
-    tabela["Dmedia"] = 0
-    
-    # Calcula o valor do denominador #
-    tabela.apply(_calculaRecenciaCliente, axis=1)
     
     # Calcula churn #
     churn = _calculaChurnInternoR( tabela )
-    
+    print(churn)
     # Faz um merge do dataframe até então com o dataframe de churn calculado com base no id #
     resultadoChurn = pd.merge( resultadoChurn, churn, on = "id" )
     
