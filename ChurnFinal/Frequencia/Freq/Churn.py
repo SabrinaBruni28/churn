@@ -6,8 +6,21 @@ import pandas as pd
 from numpy import e
 from dateutil.parser import parse
 import csv
+import os
 
 ###########################################         AUXILIARES        ################################################
+
+def _verificarTipoArquivo(caminho_arquivo) -> int:
+    # Obter a extensão do arquivo
+    _, extensao = os.path.splitext(caminho_arquivo)
+    
+    # Verificar se a extensão é .txt ou .csv
+    if extensao == '.txt':
+        return 0
+    elif extensao == '.csv':
+        return 1
+    else:
+        return 2
 
 # Função que define as colunas importantes e seu tipo para o cálculo. #
 def _defineDataframe( cdf: pd.DataFrame ) -> pd.DataFrame:
@@ -51,13 +64,18 @@ def _lerArquivo( arquivo: str ) -> pd.DataFrame:
         pd.DataFrame: retorna o arquivo como um dataframe;
     """
     # Define nome das colunas para o arquivo #
-    nomes_colunas = ["id_cliente", "char_date", "categoria", "valor"]
+    nomes_colunas = ["id_cliente", "char_date", "valor"]
     
+    # Verifica o tipo do arquivo #
+    b = _verificarTipoArquivo(arquivo)
+
     # Cria um dataframe do arquivo com as colunas renomeadas #
-    #cdf = pd.read_csv( arquivo, sep="\s+", header=0 )
-    cdf = pd.read_csv( arquivo, header=0 )
+    if b == 1:
+        cdf = pd.read_csv( arquivo, header=0, index_col=0 )
+    else:
+        cdf = pd.read_csv( arquivo, sep="\s+", header=0 )
+
     cdf.columns = nomes_colunas
-    print(cdf)
     
     # Define o formado do dataframe #
     cdf = _defineDataframe( cdf )
