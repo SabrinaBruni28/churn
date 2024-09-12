@@ -10,6 +10,8 @@ from statsmodels.stats.multicomp import pairwise_tukeyhsd
 import scipy.stats as stats
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
+
 
 # Função para contar zeros e uns em uma coluna
 def contar_zeros_uns(coluna):
@@ -307,6 +309,7 @@ def calculaValoresAvaliacao(predicted, real):
     
     # Exiba as métricas para cada classe
     for i, label in enumerate(np.unique(predicted)):
+
         # Calcula a precisão (evita divisão por zero)
         if np.sum(predicted == label) != 0:
             precisao = np.sum((predicted == label) & (real == label)) / np.sum(predicted == label)
