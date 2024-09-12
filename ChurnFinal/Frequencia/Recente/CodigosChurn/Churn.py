@@ -465,6 +465,27 @@ def process_model(tabela, model_name, calcula_func, base: float = 1):
 
         return churn
 
+def calcular_intervalos(row):
+    indices = np.where(row[1:-1] == 1)[0]  # Ignorar a coluna 'id_cliente' e "Dmedia"
+    if len(indices) > 1:
+        intervalos = np.diff(indices)
+        return np.mean(intervalos)
+    else:
+        return 0
+
+def calcular_churn(row):
+    media_intervalos = row['Media_Intervalos']
+    idade = row['Idade']
+    media_compras = 0
+    if not pd.isna(media_intervalos):
+        if (media_intervalos > 0):
+            media_compras += (1 / media_intervalos) 
+        if (idade > 0):
+            media_compras -= - (1 / idade)
+    
+    churn = 1 - media_compras
+    return churn
+
 # Função que calcula o churn com base em um arquivo de transação com qualquer um dos modelos disponíveis. #
 def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = None, freq: str = "M" ) -> pd.DataFrame:
     """
@@ -525,7 +546,7 @@ def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = Non
 
     # Salva a tabela em um arquivo #
     _salvaArquivo( tabela, "../Analises/Arquivos/tabela.csv" )
-    
+
     # Cria uma coluna de valor do denominador da média para cada cliente preenchida com zero #
     tabela["Dmedia"] = 0
     print(tabela)
@@ -644,10 +665,27 @@ def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = Non
     resultadoChurn.rename( columns = { 'churn': "churnRecente" }, inplace = True )
     
     ####################################################################################
+    print(resultadoChurn)
+    resultadoChurn.set_index("id", inplace=True)
+
+    resultadoChurn['Media_Intervalos'] = tabela.apply(calcular_intervalos, axis=1)
+
+    print(resultadoChurn)
+    resultadoChurn['Idade'] = tabela.apply( lambda row: _calculaRecenciaCliente(row), axis=1 )
+
+    print(resultadoChurn)
+
+    # Calcular o churn
+    resultadoChurn['Churn'] = resultadoChurn.apply(calcular_churn, axis=1)
+
+    print(resultadoChurn)
+
+    resultadoChurn = resultadoChurn.drop("Media_Intervalos", axis=1)
+    resultadoChurn = resultadoChurn.drop("Idade", axis=1)
 
     report_time(start_time)
     print()
-   # Salva o dataframe em um arquivo CSV #
+    # Salva o dataframe em um arquivo CSV #
     _salvaArquivo( resultadoChurn, "../Analises/Arquivos/churnResultado.csv" )
     
     # Retorna o dataframe #

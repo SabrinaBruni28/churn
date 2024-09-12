@@ -10,8 +10,7 @@ from statsmodels.stats.multicomp import pairwise_tukeyhsd
 import scipy.stats as stats
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, confusion_matrix, ConfusionMatrixDisplay
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
-
+from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 
 # Função para contar zeros e uns em uma coluna
 def contar_zeros_uns(coluna):
@@ -295,41 +294,23 @@ def treinarModelo(algoritmo, X_train, Y_train, X_test, Y_test):
     print('Acurácia: {:.2f}%'.format(100 * accuracy))
     return Y_predicted, accuracy
 
-
 def calculaValoresAvaliacao(predicted, real):
     # Calcula a acurácia
-    accuracy = np.sum(predicted == real) / len(real)
+    accuracy = accuracy_score(real, predicted)
     
     # Exibe a acurácia
     print('Acurácia: {:.2f}%'.format(100 * accuracy))
     
-    # Exiba o cabeçalho para as métricas
+    # Calcula precisão, revocação e F1-Score
+    precisao, revocacao, f1, _ = precision_recall_fscore_support(real, predicted, average=None, labels=np.unique(predicted))
+    
+    # Exibe o cabeçalho para as métricas
     print("\n{:<10} {:<12} {:<12} {:<12}".format('Classe', 'Precisão', 'Revocação', 'F1-Score'))
     print('-' * 45)
     
-    # Exiba as métricas para cada classe
+    # Exibe as métricas para cada classe
     for i, label in enumerate(np.unique(predicted)):
-
-        # Calcula a precisão (evita divisão por zero)
-        if np.sum(predicted == label) != 0:
-            precisao = np.sum((predicted == label) & (real == label)) / np.sum(predicted == label)
-        else:
-            precisao = 0.0
-
-        # Calcula a revocação (evita divisão por zero)
-        if np.sum(real == label) != 0:
-            revocacao = np.sum((predicted == label) & (real == label)) / np.sum(real == label)
-        else:
-            revocacao = 0.0
-
-        # Calcula o F1-Score (evita divisão por zero)
-        if (precisao + revocacao) != 0:
-            F1 = 2 * (precisao * revocacao) / (precisao + revocacao)
-        else:
-            F1 = 0.0
-
-        # Exibe as métricas lado a lado
-        print("{:<10} {:<12.2f} {:<12.2f} {:<12.2f}".format(label, 100 * precisao, 100 * revocacao, 100 * F1))
+        print("{:<10} {:<12.2f} {:<12.2f} {:<12.2f}".format(label, 100 * precisao[i], 100 * revocacao[i], 100 * f1[i]))
 
 
 def calculaPRFsS(Y_test, Y_predicted, algoritmo):
