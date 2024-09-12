@@ -4,11 +4,13 @@
 
 import pandas as pd
 from numpy import e
+import numpy as np
 from dateutil.parser import parse
 import csv
 import os
 import time
 import sys
+import bisect
 
 ###########################################         AUXILIARES        ################################################
 
@@ -199,13 +201,14 @@ def _calculaRecenciaCliente( row: pd.DataFrame ) -> None:
     # Começa o valor de compra com zero #
     comeca_compra = 0
     row["Dmedia"] = 0
+    total = 0
     row_copy = row.copy()
     
     for col, value in row_copy.iloc[:-1].items():
         # Se o valor de compra estiver como 1 quer dizer que já fez alguma compra #
         if comeca_compra:
             # A média desse cliente é somada mais 1 #
-            row["Dmedia"] += 1
+            total += 1
         # Se o valor de compra ainda estiver zero quer dizer que ainda não foi feita uma compra #
         
         # Se o valor da posição estiver com valor 1 então é a sua primeira compra #
@@ -213,7 +216,8 @@ def _calculaRecenciaCliente( row: pd.DataFrame ) -> None:
             # O valor de compra se torna 1, pois foi feita uma compra #
             comeca_compra = 1
             # A média desse cliente é somada mais 1 #
-            row["Dmedia"] += 1
+            total += 1
+    return total
 
 # Função que calcula o valor do denominador na média ponderada linear. #
 def _calculaLinear( totalPeriodos: int ) -> float:
@@ -266,37 +270,26 @@ def _transformaTabela( row: pd.Series, base: float = 0 ) -> pd.Series:
     
     return row_copy
 
-# Função que preenche a tabela com uma base escolhida nas datas de compras que correspondem a determinado período. #
-def _preencheTabela( row: pd.Series, tabela: pd.DataFrame, datesVector: pd.DatetimeIndex, base: float = 1 ) -> None:
+
+def _preencheTabela(row: pd.Series, tabela: pd.DataFrame, datesVector: pd.DatetimeIndex) -> None:
     """
-    Preeche a tabela de clientes por períodos, marcando a coluna que corresponde ao período de uma transação realizada;
+    Preenche a tabela de clientes por períodos, marcando a coluna que corresponde ao período de uma transação realizada.
 
     Args:
-        row (pd.Series): linha do data frame de transações;
-        tabela (pd.DataFrame): tabela de clientes por período a ser preenchida;
-        datesVector (pd.DatetimeIndex): vetor das datas dos períodos;
-        
-        base (float, optional): base usada para preencher a matriz;
-        
-            --> 0 - para preencher linear;
-            
-            --> 1 - para preencher com 1 independente da coluna (Defaults);
-            
-            --> n - [!= 1 e != 0] para preencher exponencialmente com a base n e com o expoente linear;
-    
+        row (pd.Series): linha do DataFrame de transações.
+        tabela (pd.DataFrame): tabela de clientes por período a ser preenchida.
+        datesVector (pd.DatetimeIndex): vetor das datas dos períodos.
     """
     
-    # Percorre o vetor de datas #
-    for i in range( len( datesVector ) - 1 ):
+    # Encontre o índice da data que corresponde à transação usando busca binária
+    idx = np.searchsorted(datesVector, row["date"], side='right') - 1
 
-        # Se a transação estiver entre a data atual incluída e aproxima não incluída, então o cliente fez compra nesse período #
-        if ( ( datesVector[i] <= row["date"] ) and ( row["date"] < datesVector[i + 1] ) ):
-            # f(a,b) => b, se a = 0 e a**b, se a != 0;
-            # f(a,b) = a**b + b * !a;
+    # Certifique-se de que o índice está dentro dos limites válidos
+    if (0 <= idx) and (idx < (len(datesVector) - 1)):
+        period_date = datesVector[idx]
 
-            # Na linha do cliente na coluna do período que a data corresponde na tabela é colocado o valor de preenchimento do modelo desejado #
-            tabela.loc[row.name, datesVector[i]] = ( base ** ( i + 1 ) + ( i + 1 ) * ( not base ) )
-            break
+        # Preencha a tabela
+        tabela.at[row.name, period_date] = 1
 
 ######################################################################################################################
 
@@ -367,119 +360,110 @@ def _calculaChurnInternoR( tabela: pd.DataFrame ) -> pd.DataFrame:
     # Retorna o dataframe de churn #
     return churn
 
-
-# Função que calcula o churn com base em um arquivo de transação com qualquer um dos modelos disponíveis. #
-def calculaChurn( arquivo: str, dataInicial: str = None, dataFinal: str = None, freq: str = "M", base: float = 2, modelo: str = "recente" ) -> pd.DataFrame:
+def calculaChurn(arquivo: str, dataInicial: str = None, dataFinal: str = None, freq: str = "M", base: float = 2, modelo: str = "recente") -> pd.DataFrame:
     """
-    Calcula a probabilidade de churn em qualquer modelo com base em um arquivo de transações;
+    Calcula a probabilidade de churn em qualquer modelo com base em um arquivo de transações.
 
     Args:
-        arquivo (str): arquivo de transações;
-        
-        dataInicial (str): data inicial para os períodos;
-        dataFinal (str): data final para os períodos;
-        
-            --> (As datas podem ser passadas com qualquer separador conhecido entre datas e em qualquer ordem);
-            
-            --> (É mais aconselhável o modelo MM/DD/YYYY para que não ocorra confusão entre o dia e o mês, pois por padrão é reconhecido o mês primeiro);
-            
-            --> (Defaults to None) - É utilizado a data inicial ou a final do próprio dataset de transações;
-        
-        freq (str): tamanho de cada período de intervalo;
-        
-            --> (A frequência é passada como uma letra);
-            
-            --> (H - hora, D - day, W - week, M - month, Y - year);
-            
-            --> (É possível passar uma quantidade em cada tipo adicionando um número antes da letra);
-            
-            --> (Por padrão a data inicial é ajustada para o final do mês, final do ano ou da semana);
-            
-            --> (Para mudar para ser ajustado para o começo do mês ou do ano, adicione um "S" após a letra da frequência);
-            
-            --> (Defaults to M);
-
-        base (float, optional): base desejada para o cálculo exponencial;
-        
-            --> (Preencher com valores maiores que 1);
-            
-            --> (Defaults to 2);
-            
-        modelo (str, optional): nome do modelo desejado;
-            
-            --> modelo= "linear";
-            
-            --> modelo= "exponencial";
-            
-            --> modelo= "recente";
+        arquivo (str): Caminho para o arquivo de transações.
+        dataInicial (str, optional): Data inicial para os períodos no formato MM/DD/YYYY. Defaults to None.
+        dataFinal (str, optional): Data final para os períodos no formato MM/DD/YYYY. Defaults to None.
+        freq (str, optional): Tamanho de cada período de intervalo. Defaults to "M".
+        base (float, optional): Base para o cálculo exponencial. Defaults to 2.
+        modelo (str, optional): Modelo desejado. Pode ser "linear", "exponencial" ou "recente". Defaults to "recente".
 
     Returns:
-        pd.DataFrame: retorna o dataFrame resultante do churn calculado;
+        pd.DataFrame: DataFrame resultante do churn calculado.
     """
-
-    # Leitura do DataFrame de transação #
-    cdf = _lerArquivo( arquivo )
-
-    # Construção do vetor de data inicial de cada período #
-    dataVector = _controiVetorDatas( cdf, freq, dataInicial, dataFinal )
-
-    # Constroi a tabela de clientes por período #
-    tabela = _constroiTabelaClientePorPeriodo(cdf, dataVector)
     
+    # Leitura do DataFrame de transações
+    try:
+        cdf = _lerArquivo(arquivo)
+    except Exception as e:
+        print(f"Erro ao ler o arquivo: {e}")
+        return None
+
+    # Construção do vetor de datas inicial de cada período
+    try:
+        dataVector = _controiVetorDatas(cdf, freq, dataInicial, dataFinal)
+    except Exception as e:
+        print(f"Erro na construção do vetor de datas: {e}")
+        return None
+
+    # Constroi a tabela de clientes por período
+    try:
+        tabela = _constroiTabelaClientePorPeriodo(cdf, dataVector)
+    except Exception as e:
+        print(f"Erro na construção da tabela de clientes: {e}")
+        return None
+
     cdf.set_index("id_cliente", inplace=True)
 
-    # Preenche a tabela #
-    cdf.apply( _preencheTabela, args=( tabela, dataVector, 1 ), axis=1 )
+    # Preenche a tabela
+    try:
+        cdf.apply(_preencheTabela, args=(tabela, dataVector, 1), axis=1)
+    except Exception as e:
+        print(f"Erro ao preencher a tabela: {e}")
+        return None
 
-    # Cria uma coluna de valor do denominador da média para cada cliente preenchida com zero #
+    # Cria uma coluna de valor do denominador da média para cada cliente preenchida com zero
     tabela["Dmedia"] = 0
-    
-    # Calcula a quantidade de períodos #
-    tabela.apply( _calculaRecenciaCliente, axis=1 )
-    
-    ##################### Caso o modelo seja o Linear #############################
-    if( modelo == "linear" ):
-        # Multiplica a tabela pela sua ponderação #
-        tabela = tabela.apply( lambda row: _transformaTabela( row ), axis=1 )
 
-        # Calcula o valor do denominador #
-        tabela["Dmedia"] = tabela["Dmedia"].apply( _calculaLinear )
-        
-        # Calcula o churn #
-        churn = _calculaChurnInternoR( tabela )
-        
-        # Salva em um arquivo CSV #
-        _salvaArquivo( churn, "churnLinear.csv" )
+    # Calcula a quantidade de períodos
+    tabela.apply(_calculaRecenciaCliente, axis=1)
 
-    ################### Caso o modelo seja o exponencial #########################
-    elif ( modelo == "exponencial" ):
-        # Multiplica a tabela pela sua ponderação #
-        tabela = tabela.apply(lambda row: _transformaTabela( row, base ), axis=1)
-        
-        # Calcula o valor do denominador #
-        tabela["Dmedia"] = tabela["Dmedia"].apply( _calculaExponencial, args=(base,))
-        
-        # Calcula o churn #
-        churn = _calculaChurnInternoR( tabela )
-        
-        # Salva em um arquivo CSV #
-        _salvaArquivo( churn, "churnExponencial.csv" )
+    # Verifica o modelo escolhido e aplica o cálculo correspondente
+    try:
+        if modelo == "linear":
+            tabela = tabela.apply(lambda row: _transformaTabela(row), axis=1)
+            tabela["Dmedia"] = tabela["Dmedia"].apply(_calculaLinear)
+            churn = _calculaChurnInternoR(tabela)
+            _salvaArquivo(churn, "churnLinear.csv")
 
-    ################## Caso o modelo seja o Rencente ############################
-    elif ( modelo == "recente" ):
-        # Calcula o churn #
-        churn = _calculaChurnInternoR( tabela )
-        
-        # Salva em um arquivo CSV #
-        _salvaArquivo( churn, "churnRecente.csv" )
+        elif modelo == "exponencial":
+            tabela = tabela.apply(lambda row: _transformaTabela(row, base), axis=1)
+            tabela["Dmedia"] = tabela["Dmedia"].apply(_calculaExponencial, args=(base,))
+            churn = _calculaChurnInternoR(tabela)
+            _salvaArquivo(churn, "churnExponencial.csv")
 
-    ################# Caso o modelo escolhido não exista #########################
-    else:
+        elif modelo == "recente":
+            churn = _calculaChurnInternoR(tabela)
+            _salvaArquivo(churn, "churnRecente.csv")
+
+        else:
+            print(f"Modelo '{modelo}' não reconhecido.")
+            churn = None
+
+    except Exception as e:
+        print(f"Erro ao calcular o churn: {e}")
         churn = None
 
-    # Retorna o dataframe resultante #
+    # Retorna o DataFrame resultante
     return churn
 
+def report_time(start_time):
+        elapsed_time = time.time() - start_time
+        sys.stdout.write(f"\rTempo decorrido: {elapsed_time:.2f} segundos")
+        print()
+        sys.stdout.flush()
+
+def process_model(tabela, model_name, calcula_func, base: float = 1):
+        print(model_name)
+        print(tabela)
+
+        # Multiplica a tabela pela sua ponderação
+        tabelaNova = tabela.apply(lambda row: _transformaTabela(row, base), axis=1)
+        print(tabelaNova)
+
+        # Calcula o valor do denominador
+        tabelaNova["Dmedia"] = tabelaNova["Dmedia"].apply(calcula_func)
+        print(tabelaNova)
+
+        # Calcula o churn
+        churn = _calculaChurnInternoR(tabelaNova)
+        print(churn)
+
+        return churn
 
 # Função que calcula o churn com base em um arquivo de transação com qualquer um dos modelos disponíveis. #
 def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = None, freq: str = "M" ) -> pd.DataFrame:
@@ -525,36 +509,31 @@ def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = Non
 
     # Constroi a tabela de clientes por período #
     tabela = _constroiTabelaClientePorPeriodo(cdf, dataVector)
+
+    print(tabela)
     
     cdf.set_index("id_cliente", inplace=True)
 
-    # Calcular e exibir o tempo decorrido
-    elapsed_time = time.time() - start_time
-    sys.stdout.write(f"\rTempo decorrido: {elapsed_time:.2f} segundos")
-    sys.stdout.flush()
+    report_time(start_time)
 
     # Preenche a tabela #
-    cdf.apply( _preencheTabela, args=( tabela, dataVector, 1 ), axis=1 )
+    cdf.apply( lambda row: _preencheTabela(row, tabela, dataVector), axis=1 )
 
-    # Calcular e exibir o tempo decorrido
-    elapsed_time = time.time() - start_time
-    sys.stdout.write(f"\rTempo decorrido: {elapsed_time:.2f} segundos")
-    sys.stdout.flush()
+    print(tabela)
+
+    report_time(start_time)
 
     # Salva a tabela em um arquivo #
-    _salvaArquivo( tabela, "tabela.csv" )
-
+    _salvaArquivo( tabela, "../Analises/Arquivos/tabela.csv" )
+    
     # Cria uma coluna de valor do denominador da média para cada cliente preenchida com zero #
     tabela["Dmedia"] = 0
     print(tabela)
     
     # Calcula a quantidade de períodos #
-    tabela.apply( _calculaRecenciaCliente, axis=1 )
+    tabela["Dmedia"] = tabela.apply( lambda row: _calculaRecenciaCliente(row), axis=1 )
 
-    # Calcular e exibir o tempo decorrido
-    elapsed_time = time.time() - start_time
-    sys.stdout.write(f"\rTempo decorrido: {elapsed_time:.2f} segundos")
-    sys.stdout.flush()
+    report_time(start_time)
 
     print("Linear")
     print(tabela)
@@ -564,27 +543,18 @@ def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = Non
     tabelaNova = tabela.apply( lambda row: _transformaTabela( row ), axis=1 )
     print(tabelaNova)
 
-    # Calcular e exibir o tempo decorrido
-    elapsed_time = time.time() - start_time
-    sys.stdout.write(f"\rTempo decorrido: {elapsed_time:.2f} segundos")
-    sys.stdout.flush()
+    report_time(start_time)
 
     # Calcula o valor do denominador #
-    tabelaNova["Dmedia"] = tabelaNova["Dmedia"].apply( _calculaLinear )
+    tabelaNova["Dmedia"] = tabelaNova["Dmedia"].apply( lambda row: _calculaLinear(row) )
     print(tabelaNova)
 
-    # Calcular e exibir o tempo decorrido
-    elapsed_time = time.time() - start_time
-    sys.stdout.write(f"\rTempo decorrido: {elapsed_time:.2f} segundos")
-    sys.stdout.flush()
+    report_time(start_time)
 
     # Calcula o churn #
     churn = _calculaChurnInternoR( tabelaNova )
 
-    # Calcular e exibir o tempo decorrido
-    elapsed_time = time.time() - start_time
-    sys.stdout.write(f"\rTempo decorrido: {elapsed_time:.2f} segundos")
-    sys.stdout.flush()
+    report_time(start_time)
     
     # Faz um merge do dataframe até então com o dataframe de churn calculado com base no id #
     resultadoChurn = churn
@@ -597,37 +567,25 @@ def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = Non
     print(tabela)
     ####################### Modelo exponencial de base 2 ################################
 
-    # Calcular e exibir o tempo decorrido
-    elapsed_time = time.time() - start_time
-    sys.stdout.write(f"\rTempo decorrido: {elapsed_time:.2f} segundos")
-    sys.stdout.flush()
+    report_time(start_time)
 
     # Multiplica a tabela pela sua ponderação #
     tabelaNova = tabela.apply(lambda row: _transformaTabela( row, 2 ), axis=1)
     print(tabelaNova)
 
-    # Calcular e exibir o tempo decorrido
-    elapsed_time = time.time() - start_time
-    sys.stdout.write(f"\rTempo decorrido: {elapsed_time:.2f} segundos")
-    sys.stdout.flush()
+    report_time(start_time)
 
     # Calcula o valor do denominador #
-    tabelaNova["Dmedia"] = tabelaNova["Dmedia"].apply( _calculaExponencial, args=(2,))
+    tabelaNova["Dmedia"] = tabelaNova["Dmedia"].apply( lambda row: _calculaExponencial(row, 2))
     print(tabelaNova)
 
-    # Calcular e exibir o tempo decorrido
-    elapsed_time = time.time() - start_time
-    sys.stdout.write(f"\rTempo decorrido: {elapsed_time:.2f} segundos")
-    sys.stdout.flush()
+    report_time(start_time)
 
     # Calcula o churn #
     churn = _calculaChurnInternoR( tabelaNova )
     print(churn)
 
-    # Calcular e exibir o tempo decorrido
-    elapsed_time = time.time() - start_time
-    sys.stdout.write(f"\rTempo decorrido: {elapsed_time:.2f} segundos")
-    sys.stdout.flush()
+    report_time(start_time)
 
     # Faz um merge do dataframe até então com o dataframe de churn calculado com base no id #
     resultadoChurn = pd.merge( resultadoChurn, churn, on = "id" )
@@ -640,37 +598,25 @@ def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = Non
     print(tabela)
     ####################### Modelo exponencial de base e ################################
     
-    # Calcular e exibir o tempo decorrido
-    elapsed_time = time.time() - start_time
-    sys.stdout.write(f"\rTempo decorrido: {elapsed_time:.2f} segundos")
-    sys.stdout.flush()
+    report_time(start_time)
 
     # Multiplica a tabela pela sua ponderação #
     tabelaNova = tabela.apply(lambda row: _transformaTabela( row, e ), axis=1)
     print(tabelaNova)
 
-    # Calcular e exibir o tempo decorrido
-    elapsed_time = time.time() - start_time
-    sys.stdout.write(f"\rTempo decorrido: {elapsed_time:.2f} segundos")
-    sys.stdout.flush()
+    report_time(start_time)
 
     # Calcula o valor do denominador #
-    tabelaNova["Dmedia"] = tabelaNova["Dmedia"].apply( _calculaExponencial, args=(e,))
+    tabelaNova["Dmedia"] = tabelaNova["Dmedia"].apply( lambda row: _calculaExponencial(row, e))
     print(tabelaNova)
 
-    # Calcular e exibir o tempo decorrido
-    elapsed_time = time.time() - start_time
-    sys.stdout.write(f"\rTempo decorrido: {elapsed_time:.2f} segundos")
-    sys.stdout.flush()
+    report_time(start_time)
 
     # Calcula o churn #
     churn = _calculaChurnInternoR( tabelaNova )
     print(churn)
 
-    # Calcular e exibir o tempo decorrido
-    elapsed_time = time.time() - start_time
-    sys.stdout.write(f"\rTempo decorrido: {elapsed_time:.2f} segundos")
-    sys.stdout.flush()
+    report_time(start_time)
 
     # Faz um merge do dataframe até então com o dataframe de churn calculado com base no id #
     resultadoChurn = pd.merge( resultadoChurn, churn, on = "id" )
@@ -683,19 +629,13 @@ def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = Non
     print(tabela)
     ########################## Modelo Recente ##########################################
     
-    # Calcular e exibir o tempo decorrido
-    elapsed_time = time.time() - start_time
-    sys.stdout.write(f"\rTempo decorrido: {elapsed_time:.2f} segundos")
-    sys.stdout.flush()
+    report_time(start_time)
 
     # Calcula churn #
     churn = _calculaChurnInternoR( tabela )
     print(churn)
 
-    # Calcular e exibir o tempo decorrido
-    elapsed_time = time.time() - start_time
-    sys.stdout.write(f"\rTempo decorrido: {elapsed_time:.2f} segundos")
-    sys.stdout.flush()
+    report_time(start_time)
 
     # Faz um merge do dataframe até então com o dataframe de churn calculado com base no id #
     resultadoChurn = pd.merge( resultadoChurn, churn, on = "id" )
@@ -705,14 +645,10 @@ def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = Non
     
     ####################################################################################
 
-
-    # Calcular e exibir o tempo decorrido
-    elapsed_time = time.time() - start_time
-    sys.stdout.write(f"\rTempo decorrido: {elapsed_time:.2f} segundos")
-    sys.stdout.flush()
+    report_time(start_time)
     print()
    # Salva o dataframe em um arquivo CSV #
-    _salvaArquivo( resultadoChurn, "churnResultado.csv" )
+    _salvaArquivo( resultadoChurn, "../Analises/Arquivos/churnResultado.csv" )
     
     # Retorna o dataframe #
     return resultadoChurn
