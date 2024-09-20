@@ -47,8 +47,8 @@ def _defineDataframe( cdf: pd.DataFrame ) -> pd.DataFrame:
     novocdf["date"] = cdf["char_date"].astype( str )
     
     # Define a coluna de data como tipo data #
-    novocdf["date"] = pd.to_datetime( novocdf["date"], format = "%Y-%m-%d" )
-    
+    novocdf["date"] = pd.to_datetime(novocdf["date"], format="%Y-%m-%d")
+
     print(novocdf)
     
     return novocdf
@@ -79,7 +79,9 @@ def _lerArquivo( arquivo: str ) -> pd.DataFrame:
         cdf = pd.read_csv( arquivo, header=0, index_col=0 )
     else:
         cdf = pd.read_csv( arquivo, sep="\s+", header=0 )
-
+    
+    print(cdf)
+    
     cdf.columns = nomes_colunas
     
     # Define o formado do dataframe #
@@ -465,6 +467,44 @@ def process_model(tabela, model_name, calcula_func, base: float = 1):
 
         return churn
 
+def calcular_intervalos(row):
+    indices = np.where(row[1:-1] == 1)[0]  # Ignorar a coluna 'id_cliente' e "Dmedia"
+    if len(indices) > 1:
+        intervalos = np.diff(indices)
+        return np.mean(intervalos)
+    else:
+        return 0
+
+def calcular_churn(row):
+    media_intervalos = row['Media_Intervalos']
+    idade = row['Idade']
+    media_compras = 0
+    if not pd.isna(media_intervalos):
+        if (media_intervalos > 0):
+            media_compras += (1 / media_intervalos) 
+        if (idade > 0):
+            media_compras -= - (1 / idade)
+    
+    churn = 1 - media_compras
+    return churn
+
+# Função para analisar churn com o número de colunas convertido para inteiro
+def analisar_churn(row, n_colunas, n = 3):
+    # Converte n_colunas para inteiro
+    n_colunas = int(n_colunas) + n
+    
+    # Garantir que n_colunas não seja maior que o total de colunas da linha
+    n_colunas = min(n_colunas, len(row))
+    
+    # Seleciona as últimas 'n_colunas' da linha
+    colunas_selecionadas = row.iloc[-n_colunas:]
+    
+    # Verifica se há algum 1 nas colunas selecionadas
+    if 1 in colunas_selecionadas.values:
+        return 0
+    else:
+        return 1
+
 # Função que calcula o churn com base em um arquivo de transação com qualquer um dos modelos disponíveis. #
 def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = None, freq: str = "M" ) -> pd.DataFrame:
     """
@@ -524,7 +564,7 @@ def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = Non
     report_time(start_time)
 
     # Salva a tabela em um arquivo #
-    _salvaArquivo( tabela, "../Analises/Arquivos/tabela.csv" )
+    #_salvaArquivo( tabela, "../Analises/Arquivos/tabelaTotalBANK.csv" )
     
     # Cria uma coluna de valor do denominador da média para cada cliente preenchida com zero #
     tabela["Dmedia"] = 0
@@ -644,12 +684,22 @@ def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = Non
     resultadoChurn.rename( columns = { 'churn': "churnRecente" }, inplace = True )
     
     ####################################################################################
+    print(resultadoChurn)
+    resultadoChurn.set_index("id", inplace=True)
+
+    resultadoChurn['Media_Intervalos'] = tabela.apply(calcular_intervalos, axis=1)
+
+    print(resultadoChurn)
 
     report_time(start_time)
     print()
-   # Salva o dataframe em um arquivo CSV #
-    _salvaArquivo( resultadoChurn, "../Analises/Arquivos/churnResultado.csv" )
+
+    # Salva o dataframe em um arquivo CSV #
+    _salvaArquivo( resultadoChurn, "../Analises/Arquivos/churnResultadoTrans.csv" )
     
+    report_time(start_time)
+    print()
+
     # Retorna o dataframe #
     return resultadoChurn
 

@@ -21,7 +21,7 @@ def calculaFrequencia( df: pd.DataFrame ) -> pd.Timedelta:
 
 
 
-arquivo = "../trans_clean.csv"
+arquivo = "../../ArquivosTransacoes/bank.csv"
 
 # Leitura do DataFrame de transação #
 cdf = c._lerArquivo( arquivo )
@@ -29,7 +29,3 @@ cdf = c._lerArquivo( arquivo )
 # Cálculo da Frequência #
 f = calculaFrequencia(cdf)
 print("Frequência:", f)
-
-# Cálculo do Churn #
-teste = c.calculaAllChurn( arquivo=arquivo, dataFinal="1998-12-01", freq=f )
-print(teste)
