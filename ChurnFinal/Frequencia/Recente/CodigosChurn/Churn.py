@@ -47,8 +47,8 @@ def _defineDataframe( cdf: pd.DataFrame ) -> pd.DataFrame:
     novocdf["date"] = cdf["char_date"].astype( str )
     
     # Define a coluna de data como tipo data #
-    novocdf["date"] = pd.to_datetime( novocdf["date"], format = "%Y-%m-%d" )
-    
+    novocdf["date"] = pd.to_datetime(novocdf["date"], format="%Y-%m-%d")
+
     print(novocdf)
     
     return novocdf
@@ -79,7 +79,9 @@ def _lerArquivo( arquivo: str ) -> pd.DataFrame:
         cdf = pd.read_csv( arquivo, header=0, index_col=0 )
     else:
         cdf = pd.read_csv( arquivo, sep="\s+", header=0 )
-
+    
+    print(cdf)
+    
     cdf.columns = nomes_colunas
     
     # Define o formado do dataframe #
@@ -486,6 +488,23 @@ def calcular_churn(row):
     churn = 1 - media_compras
     return churn
 
+# Função para analisar churn com o número de colunas convertido para inteiro
+def analisar_churn(row, n_colunas, n = 3):
+    # Converte n_colunas para inteiro
+    n_colunas = int(n_colunas) + n
+    
+    # Garantir que n_colunas não seja maior que o total de colunas da linha
+    n_colunas = min(n_colunas, len(row))
+    
+    # Seleciona as últimas 'n_colunas' da linha
+    colunas_selecionadas = row.iloc[-n_colunas:]
+    
+    # Verifica se há algum 1 nas colunas selecionadas
+    if 1 in colunas_selecionadas.values:
+        return 0
+    else:
+        return 1
+
 # Função que calcula o churn com base em um arquivo de transação com qualquer um dos modelos disponíveis. #
 def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = None, freq: str = "M" ) -> pd.DataFrame:
     """
@@ -545,8 +564,8 @@ def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = Non
     report_time(start_time)
 
     # Salva a tabela em um arquivo #
-    _salvaArquivo( tabela, "../Analises/Arquivos/tabela.csv" )
-
+    #_salvaArquivo( tabela, "../Analises/Arquivos/tabelaTotalBANK.csv" )
+    
     # Cria uma coluna de valor do denominador da média para cada cliente preenchida com zero #
     tabela["Dmedia"] = 0
     print(tabela)
@@ -671,23 +690,16 @@ def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = Non
     resultadoChurn['Media_Intervalos'] = tabela.apply(calcular_intervalos, axis=1)
 
     print(resultadoChurn)
-    resultadoChurn['Idade'] = tabela.apply( lambda row: _calculaRecenciaCliente(row), axis=1 )
-
-    print(resultadoChurn)
-
-    # Calcular o churn
-    resultadoChurn['Churn'] = resultadoChurn.apply(calcular_churn, axis=1)
-
-    print(resultadoChurn)
-
-    resultadoChurn = resultadoChurn.drop("Media_Intervalos", axis=1)
-    resultadoChurn = resultadoChurn.drop("Idade", axis=1)
 
     report_time(start_time)
     print()
+
     # Salva o dataframe em um arquivo CSV #
-    _salvaArquivo( resultadoChurn, "../Analises/Arquivos/churnResultado.csv" )
+    _salvaArquivo( resultadoChurn, "../Analises/Arquivos/churnResultadoTrans.csv" )
     
+    report_time(start_time)
+    print()
+
     # Retorna o dataframe #
     return resultadoChurn
 
