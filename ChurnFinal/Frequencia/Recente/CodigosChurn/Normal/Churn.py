@@ -449,24 +449,6 @@ def report_time(start_time):
         print()
         sys.stdout.flush()
 
-def process_model(tabela, model_name, calcula_func, base: float = 1):
-        print(model_name)
-        print(tabela)
-
-        # Multiplica a tabela pela sua ponderação
-        tabelaNova = tabela.apply(lambda row: _transformaTabela(row, base), axis=1)
-        print(tabelaNova)
-
-        # Calcula o valor do denominador
-        tabelaNova["Dmedia"] = tabelaNova["Dmedia"].apply(calcula_func)
-        print(tabelaNova)
-
-        # Calcula o churn
-        churn = _calculaChurnInternoR(tabelaNova)
-        print(churn)
-
-        return churn
-
 def calcular_intervalos(row):
     indices = np.where(row[1:-1] == 1)[0]  # Ignorar a coluna 'id_cliente' e "Dmedia"
     if len(indices) > 1:
@@ -474,36 +456,6 @@ def calcular_intervalos(row):
         return np.mean(intervalos)
     else:
         return 0
-
-def calcular_churn(row):
-    media_intervalos = row['Media_Intervalos']
-    idade = row['Idade']
-    media_compras = 0
-    if not pd.isna(media_intervalos):
-        if (media_intervalos > 0):
-            media_compras += (1 / media_intervalos) 
-        if (idade > 0):
-            media_compras -= - (1 / idade)
-    
-    churn = 1 - media_compras
-    return churn
-
-# Função para analisar churn com o número de colunas convertido para inteiro
-def analisar_churn(row, n_colunas, n = 3):
-    # Converte n_colunas para inteiro
-    n_colunas = int(n_colunas) + n
-    
-    # Garantir que n_colunas não seja maior que o total de colunas da linha
-    n_colunas = min(n_colunas, len(row))
-    
-    # Seleciona as últimas 'n_colunas' da linha
-    colunas_selecionadas = row.iloc[-n_colunas:]
-    
-    # Verifica se há algum 1 nas colunas selecionadas
-    if 1 in colunas_selecionadas.values:
-        return 0
-    else:
-        return 1
 
 # Função que calcula o churn com base em um arquivo de transação com qualquer um dos modelos disponíveis. #
 def calculaAllChurn( arquivo: str, dataInicial: str = None, dataFinal: str = None, freq: str = "M" ) -> pd.DataFrame:
